@@ -23,7 +23,7 @@ export const bibleBooks: BibleBook[] = [
   { name: 'Psalms', nameEn: 'Psalms', nameFr: 'Psaumes', chapters: 150, testament: 'old' },
   { name: 'Proverbs', nameEn: 'Proverbs', nameFr: 'Proverbes', chapters: 31, testament: 'old' },
   { name: 'Ecclesiastes', nameEn: 'Ecclesiastes', nameFr: 'Ecclésiaste', chapters: 12, testament: 'old' },
-  { name: 'SongOfSongs', nameEn: 'Song of Songs', nameFr: 'Cantiquedescantiques', chapters: 8, testament: 'old' },
+  { name: 'SongOfSongs', nameEn: 'SongOfSongs', nameFr: 'SongOfSongs', chapters: 8, testament: 'old' },
   { name: 'Isaiah', nameEn: 'Isaiah', nameFr: 'Ésaïe', chapters: 66, testament: 'old' },
   { name: 'Jeremiah', nameEn: 'Jeremiah', nameFr: 'Jérémie', chapters: 52, testament: 'old' },
   { name: 'Lamentations', nameEn: 'Lamentations', nameFr: 'Lamentations', chapters: 5, testament: 'old' },
