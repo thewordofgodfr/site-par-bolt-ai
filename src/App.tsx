@@ -1,3 +1,5 @@
+function App() {
+  console.log("Nouvelle version - App"); // 👈 test
 import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
 import Navigation from './components/Navigation';
