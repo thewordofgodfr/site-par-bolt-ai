@@ -124,6 +124,13 @@ export default function Reading() {
     }
   }, [state.readingContext, books, dispatch]);
 
+  // Refresh chapter content when language changes
+  useEffect(() => {
+    if (selectedBook && selectedChapter) {
+      fetchChapter(selectedBook, selectedChapter);
+    }
+  }, [state.settings.language]);
+
   // Auto-load Matthew chapter 1 on component mount
   useEffect(() => {
     if (!selectedBook && !state.readingContext) {
