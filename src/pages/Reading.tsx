@@ -39,7 +39,7 @@ export default function Reading() {
     setSelectedChapter(1);
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
-    setShowRestoredNotification(false); // Hide notification when user actively changes book
+    setShowRestoredNotification(false); // cacher la notif quand l'utilisateur change de livre
   };
 
   const handleChapterSelect = (chapterNum: number) => {
@@ -47,7 +47,7 @@ export default function Reading() {
     if (selectedBook) {
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
-      setShowRestoredNotification(false); // Hide notification when user actively changes chapter
+      setShowRestoredNotification(false); // cacher la notif quand l'utilisateur change de chapitre
     }
   };
 
@@ -65,7 +65,7 @@ export default function Reading() {
 
   const handleGlobalSearch = async (term: string) => {
     setGlobalSearchTerm(term);
-    
+
     if (!term.trim()) {
       setGlobalSearchResults([]);
       setShowGlobalSearch(false);
@@ -74,7 +74,7 @@ export default function Reading() {
 
     setSearchLoading(true);
     setShowGlobalSearch(true);
-    
+
     try {
       const results = await searchInBible(term, state.settings.language);
       setGlobalSearchResults(results);
@@ -110,7 +110,7 @@ export default function Reading() {
     return state.settings.language === 'fr' ? book.nameFr : book.nameEn;
   };
 
-  // Handle navigation from verse click
+  // Navigation depuis un clic sur un verset (depuis la recherche globale, etc.)
   useEffect(() => {
     if (state.readingContext) {
       const book = books.find(b => b.name === state.readingContext!.book);
@@ -118,29 +118,51 @@ export default function Reading() {
         setSelectedBook(book);
         setSelectedChapter(state.readingContext!.chapter);
         fetchChapter(book, state.readingContext!.chapter);
-        // Clear the reading context after using it
+        // Nettoyer le contexte après usage
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       }
     }
   }, [state.readingContext, books, dispatch]);
 
-  // Refresh chapter content when language changes
+  /**
+   * 🔁 IMPORTANT : Quand la langue change, on:
+   *  1) recharge le chapitre courant dans la nouvelle langue,
+   *  2) re-sauvegarde la position de lecture (utile pour restaurer par langue),
+   *  3) relance la recherche globale si elle est ouverte, dans la nouvelle langue.
+   */
   useEffect(() => {
+    // Recharger le chapitre en cours
     if (selectedBook && selectedChapter) {
       fetchChapter(selectedBook, selectedChapter);
+      saveReadingPosition(selectedBook.name, selectedChapter);
+      setShowRestoredNotification(false);
     }
-  }, [state.settings.language, selectedBook, selectedChapter]);
 
-  // Auto-load Matthew chapter 1 on component mount
+    // Relancer la recherche globale si un terme est actif
+    if (globalSearchTerm.trim()) {
+      (async () => {
+        setSearchLoading(true);
+        try {
+          const results = await searchInBible(globalSearchTerm, state.settings.language);
+          setGlobalSearchResults(results);
+          setShowGlobalSearch(true);
+        } catch (e) {
+          console.error('Search error after language change:', e);
+          setGlobalSearchResults([]);
+        } finally {
+          setSearchLoading(false);
+        }
+      })();
+    }
+  }, [state.settings.language]); // <-- effet dépend uniquement de la langue
+
+  // Chargement automatique au premier rendu : restaure la position récente, sinon Matthieu 1
   useEffect(() => {
     if (!selectedBook && !state.readingContext) {
-      // Check if there's a saved reading position
       const lastPosition = state.settings.lastReadingPosition;
-      
+
       if (lastPosition && lastPosition.timestamp) {
-        // Only restore if saved within last 30 days
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-        
         if (lastPosition.timestamp > thirtyDaysAgo) {
           const savedBook = books.find(b => b.name === lastPosition.book);
           if (savedBook) {
@@ -152,8 +174,8 @@ export default function Reading() {
           }
         }
       }
-      
-      // Fallback to Matthew chapter 1
+
+      // Fallback : Matthieu 1
       const matthewBook = books.find(b => b.name === 'Matthew');
       if (matthewBook) {
         setSelectedBook(matthewBook);
@@ -167,13 +189,13 @@ export default function Reading() {
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
+          {/* En-tête */}
           <div className="text-center mb-8">
             <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
               {t('reading')}
             </h1>
-            
-            {/* Global Search Bar */}
+
+            {/* Barre de recherche globale */}
             <div className="max-w-2xl mx-auto mt-6">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -199,20 +221,20 @@ export default function Reading() {
                   </button>
                 )}
               </div>
-              
-              {/* Search Results Count */}
+
+              {/* Compteur des résultats */}
               {globalSearchTerm && (
                 <div className="mt-3">
                   {searchLoading ? (
                     <div className="flex items-center justify-center">
-                      <div className={`animate-spin rounded-full h-5 w-5 border-b-2 mr-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`}></div>
+                      <div className={`animate-spin rounded-full h-5 w-5 border-b-2 mr-2 ${isDark ? 'border-blue-4 00' : 'border-blue-600'}`}></div>
                       <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         {state.settings.language === 'fr' ? 'Recherche en cours...' : 'Searching...'}
                       </p>
                     </div>
                   ) : (
                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {globalSearchResults.length > 0 
+                      {globalSearchResults.length > 0
                         ? state.settings.language === 'fr'
                           ? `${globalSearchResults.length} verset${globalSearchResults.length > 1 ? 's' : ''} trouvé${globalSearchResults.length > 1 ? 's' : ''} dans toute la Bible`
                           : `${globalSearchResults.length} verse${globalSearchResults.length > 1 ? 's' : ''} found in the entire Bible`
@@ -227,17 +249,17 @@ export default function Reading() {
             </div>
           </div>
 
-          {/* Global Search Results */}
+          {/* Résultats de recherche globale */}
           {showGlobalSearch && globalSearchResults.length > 0 && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
                 <BookOpen size={20} className="mr-2" />
                 {state.settings.language === 'fr' ? 'Résultats de recherche' : 'Search Results'}
               </h2>
-              
+
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {globalSearchResults.map((verse, index) => (
-                  <div 
+                {globalSearchResults.map((verse) => (
+                  <div
                     key={`${verse.book}-${verse.chapter}-${verse.verse}`}
                     onClick={() => handleVerseClick(verse.book, verse.chapter)}
                     className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
@@ -254,7 +276,7 @@ export default function Reading() {
                         {state.settings.language === 'fr' ? 'Cliquer pour aller au chapitre' : 'Click to go to chapter'}
                       </span>
                     </div>
-                    <div 
+                    <div
                       className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
                       style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
                       dangerouslySetInnerHTML={{
@@ -264,8 +286,8 @@ export default function Reading() {
                   </div>
                 ))}
               </div>
-              
-              {/* Close Search Results */}
+
+              {/* Fermer les résultats */}
               <div className="mt-4 text-center">
                 <button
                   onClick={clearGlobalSearch}
@@ -281,7 +303,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* No Global Search Results */}
+          {/* Aucun résultat */}
           {showGlobalSearch && globalSearchResults.length === 0 && !searchLoading && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-8 mb-6 text-center`}>
               <Search size={48} className={`mx-auto mb-4 opacity-50 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -289,7 +311,7 @@ export default function Reading() {
                 {state.settings.language === 'fr' ? 'Aucun résultat trouvé' : 'No results found'}
               </h3>
               <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
-                {state.settings.language === 'fr' 
+                {state.settings.language === 'fr'
                   ? `Aucun verset trouvé pour "${globalSearchTerm}" dans la Bible`
                   : `No verses found for "${globalSearchTerm}" in the Bible`
                 }
@@ -308,14 +330,14 @@ export default function Reading() {
           )}
 
           <div className={`grid grid-cols-1 lg:grid-cols-4 gap-6 ${showGlobalSearch ? 'opacity-75' : ''}`}>
-            {/* Book Selection Sidebar */}
+            {/* Liste des livres */}
             <div className={`lg:col-span-1 ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
                 <Book size={20} className="mr-2" />
                 {t('selectBook')}
               </h2>
 
-              {/* Old Testament */}
+              {/* Ancien Testament */}
               <div className="mb-6">
                 <h3 className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'} uppercase tracking-wide`}>
                   {t('oldTestament')}
@@ -341,7 +363,7 @@ export default function Reading() {
                 </div>
               </div>
 
-              {/* New Testament */}
+              {/* Nouveau Testament */}
               <div>
                 <h3 className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'} uppercase tracking-wide`}>
                   {t('newTestament')}
@@ -368,7 +390,7 @@ export default function Reading() {
               </div>
             </div>
 
-            {/* Content Area */}
+            {/* Zone de contenu */}
             <div className="lg:col-span-3">
               {selectedBook && (
                 <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6`}>
@@ -376,8 +398,8 @@ export default function Reading() {
                     <h2 className={`text-2xl font-bold mb-4 sm:mb-0 ${isDark ? 'text-white' : 'text-gray-800'}`}>
                       {getBookName(selectedBook)}
                     </h2>
-                    
-                    {/* Chapter Selection */}
+
+                    {/* Sélecteur de chapitre */}
                     <div className="flex items-center space-x-4">
                       <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'} flex items-center`}>
                         <span className="text-base font-semibold">{t('chapter')}:</span>
@@ -398,22 +420,22 @@ export default function Reading() {
                         >
                           <ChevronLeft size={16} />
                         </button>
-                        
+
                         <div className="relative">
-                        <select
-                          value={selectedChapter}
-                          onChange={(e) => handleChapterSelect(Number(e.target.value))}
-                          className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
-                        >
-                          {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => (
-                            <option key={num} value={num}>
-                              {num}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'} pointer-events-none`} />
+                          <select
+                            value={selectedChapter}
+                            onChange={(e) => handleChapterSelect(Number(e.target.value))}
+                            className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                          >
+                            {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => (
+                              <option key={num} value={num}>
+                                {num}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={16} className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'} pointer-events-none`} />
                         </div>
-                        
+
                         <button
                           onClick={handleNextChapter}
                           disabled={selectedChapter >= selectedBook.chapters}
@@ -435,26 +457,26 @@ export default function Reading() {
                 </div>
               )}
 
-              {/* Chapter Content */}
+              {/* Contenu du chapitre */}
               <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 min-h-96`}>
-                {/* Restore Reading Position Notification */}
+                {/* Notification de restauration */}
                 {showRestoredNotification && (
                   <div className={`mb-4 p-3 rounded-lg border-l-4 ${
-                    isDark 
-                      ? 'bg-blue-900 border-blue-500 text-blue-200' 
+                    isDark
+                      ? 'bg-blue-900 border-blue-500 text-blue-200'
                       : 'bg-blue-50 border-blue-500 text-blue-700'
                   }`}>
                     <p className="text-sm flex items-center">
                       <BookOpen size={16} className="mr-2" />
-                      {state.settings.language === 'fr' 
+                      {state.settings.language === 'fr'
                         ? 'Vous avez repris votre lecture là où vous vous étiez arrêté'
                         : 'You resumed reading where you left off'
                       }
                       <button
                         onClick={() => setShowRestoredNotification(false)}
                         className={`ml-auto text-xs px-2 py-1 rounded ${
-                          isDark 
-                            ? 'hover:bg-blue-800 text-blue-300' 
+                          isDark
+                            ? 'hover:bg-blue-800 text-blue-300'
                             : 'hover:bg-blue-100 text-blue-600'
                         }`}
                       >
@@ -482,7 +504,7 @@ export default function Reading() {
                           <span className={`inline-block w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0`}>
                             {verse.verse}
                           </span>
-                          <div 
+                          <div
                             className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
                           >
@@ -511,3 +533,4 @@ export default function Reading() {
     </div>
   );
 }
+
