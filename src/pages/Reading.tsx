@@ -5,6 +5,7 @@ import { getBibleBooks, getChapter, searchInBible } from '../services/bibleServi
 import { BibleBook, BibleChapter } from '../types/bible';
 import { ChevronDown, Book, ChevronLeft, ChevronRight, Search, X, BookOpen } from 'lucide-react';
 import { highlightText } from '../utils/searchUtils';
+
 export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
@@ -101,7 +102,6 @@ export default function Reading() {
       saveReadingPosition(book, chapter);
     }
   };
-
 
   const oldTestamentBooks = books.filter(book => book.testament === 'old');
   const newTestamentBooks = books.filter(book => book.testament === 'new');
