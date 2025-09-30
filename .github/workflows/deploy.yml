@@ -27,13 +27,27 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install deps
-        run: npm install   # (ok si pas de package-lock)
+      - name: Install deps (ci if lockfile, else install)
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
-      - name: Build
-        run: npm run build # Vite => sort dans dist/
+      - name: Build (Vite -> dist)
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build
 
-      - name: Upload artifact
+      - name: Show workspace and dist
+        run: |
+          pwd
+          ls -la
+          echo "---- dist ----"
+          ls -la dist || true
+
+      - name: Upload artifact to Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -43,9 +57,5 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      ur
 
