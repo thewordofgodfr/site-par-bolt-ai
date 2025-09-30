@@ -129,7 +129,7 @@ export default function Reading() {
     if (selectedBook && selectedChapter) {
       fetchChapter(selectedBook, selectedChapter);
     }
-  }, [state.settings.language]);
+  }, [state.settings.language, selectedBook, selectedChapter]);
 
   // Auto-load Matthew chapter 1 on component mount
   useEffect(() => {
