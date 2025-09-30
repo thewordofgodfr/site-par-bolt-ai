@@ -1,12 +1,12 @@
 {
-  "Name": "Cantique des Cantiques",
+  "Name": "CantiquedesCantiques",
   "Chapters": [
     {
       "Number": 1,
       "Verses": [
         {
           "ID": 1,
-          "Text": "Cantique des cantiques, de Salomon."
+          "Text": "Cantiquedescantiques, de Salomon."
         },
         {
           "ID": 2,
