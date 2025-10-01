@@ -10,17 +10,22 @@ function AppContent() {
   const { state } = useApp();
 
   useEffect(() => {
-    // Update document title and theme
-    const title = 'Random Bible - The Voice of God';
+    // Titre selon la langue
+    const title =
+      state.settings.language === 'fr'
+        ? 'Bible Aléatoire - La Parole de Dieu'
+        : 'Random Bible - The Voice of God';
     document.title = title;
-    
-    // Update HTML class for theme
+
+    // Thème + attribut lang sur <html>
+    const root = document.documentElement;
     if (state.settings.theme === 'dark') {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
     }
-  }, [state.settings.theme]);
+    root.setAttribute('lang', state.settings.language === 'fr' ? 'fr' : 'en');
+  }, [state.settings.theme, state.settings.language]);
 
   const renderCurrentPage = () => {
     switch (state.currentPage) {
@@ -38,18 +43,18 @@ function AppContent() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${
-      state.settings.theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
+    <div
+      className={`min-h-screen transition-colors duration-200 ${
+        state.settings.theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      }`}
+    >
       <Navigation />
-      <main>
-        {renderCurrentPage()}
-      </main>
+      <main>{renderCurrentPage()}</main>
     </div>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <AppProvider>
       <AppContent />
@@ -57,4 +62,3 @@ function App() {
   );
 }
 
-export default App;
