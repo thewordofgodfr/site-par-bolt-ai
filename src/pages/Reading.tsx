@@ -26,7 +26,7 @@ export default function Reading() {
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 🔎 Recherche (soumission via Entrée ou icône)
+  // 🔎 Recherche (avec bouton/loupe)
   const [searchInput, setSearchInput] = useState<string>('');
   const [globalSearchTerm, setGlobalSearchTerm] = useState<string>('');
   const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
@@ -34,13 +34,14 @@ export default function Reading() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchHint, setSearchHint] = useState<string>('');
 
-  // ⭐ Mise en évidence du verset depuis la recherche
+  // ⭐ Mise en évidence d’un verset (après clic dans les résultats)
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
 
   // 📋 Sélection multiple & copie
   const [selectionMode, setSelectionMode] = useState<boolean>(false);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
-  const [copiedKey, setCopiedKey] = useState<string>(''); // feedback "Copié"
+  const [copiedKey, setCopiedKey] = useState<string>('');
+  const [showSelectionTip, setShowSelectionTip] = useState<boolean>(false);
 
   // 📱 Sélecteur de livres (mobile)
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
@@ -50,6 +51,7 @@ export default function Reading() {
   const isDark = state.settings.theme === 'dark';
   const MIN_CHARS = 2;
 
+  // ====== Chargement du chapitre ======
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
     setLoading(true);
     try {
@@ -71,7 +73,7 @@ export default function Reading() {
     setSelectionMode(false);
     setSelectedVerses([]);
     setHighlightedVerse(null);
-    setShowBookPicker(false); // fermer le sélecteur mobile si ouvert
+    setShowBookPicker(false);
   };
 
   const handleChapterSelect = (chapterNum: number) => {
@@ -87,18 +89,13 @@ export default function Reading() {
   };
 
   const handlePreviousChapter = () => {
-    if (selectedBook && selectedChapter > 1) {
-      handleChapterSelect(selectedChapter - 1);
-    }
+    if (selectedBook && selectedChapter > 1) handleChapterSelect(selectedChapter - 1);
   };
-
   const handleNextChapter = () => {
-    if (selectedBook && selectedChapter < selectedBook.chapters) {
-      handleChapterSelect(selectedChapter + 1);
-    }
+    if (selectedBook && selectedChapter < selectedBook.chapters) handleChapterSelect(selectedChapter + 1);
   };
 
-  // Lancer la recherche
+  // ====== Recherche ======
   const performSearch = async (term: string) => {
     const trimmed = term.trim();
     if (trimmed.length < MIN_CHARS) {
@@ -142,7 +139,7 @@ export default function Reading() {
     setSearchHint('');
   };
 
-  // ⤴️ Aller au chapitre & mettre en évidence le verset
+  // Aller au chapitre & mise en évidence
   const handleVerseClick = (book: string, chapterNum: number, verseNum: number) => {
     const bookObj = books.find(b => b.name === book);
     if (bookObj) {
@@ -171,11 +168,9 @@ export default function Reading() {
   const oldTestamentBooks = books.filter(book => book.testament === 'old');
   const newTestamentBooks = books.filter(book => book.testament === 'new');
 
-  const getBookName = (book: BibleBook) => {
-    return state.settings.language === 'fr' ? book.nameFr : book.nameEn;
-  };
+  const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
-  // Navigation depuis contexte externe
+  // Navigation contextuelle
   useEffect(() => {
     if (state.readingContext) {
       const book = books.find(b => b.name === state.readingContext!.book);
@@ -216,8 +211,7 @@ export default function Reading() {
   useEffect(() => {
     if (!selectedBook && !state.readingContext) {
       const lastPosition = state.settings.lastReadingPosition;
-
-      if (lastPosition && lastPosition.timestamp) {
+      if (lastPosition?.timestamp) {
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
         if (lastPosition.timestamp > thirtyDaysAgo) {
           const savedBook = books.find(b => b.name === lastPosition.book);
@@ -230,7 +224,6 @@ export default function Reading() {
           }
         }
       }
-
       const matthewBook = books.find(b => b.name === 'Matthew');
       if (matthewBook) {
         setSelectedBook(matthewBook);
@@ -240,7 +233,7 @@ export default function Reading() {
     }
   }, [books, selectedBook, state.readingContext]);
 
-  // 🔔 Scroll vers le verset mis en évidence
+  // Scroll vers le verset ciblé
   useEffect(() => {
     if (highlightedVerse !== null && chapter) {
       const id = `verse-${highlightedVerse}`;
@@ -252,7 +245,7 @@ export default function Reading() {
     }
   }, [chapter, highlightedVerse]);
 
-  // ⏳ Surbrillance 20 s
+  // Surbrillance 20s
   useEffect(() => {
     if (highlightedVerse !== null) {
       const t = setTimeout(() => setHighlightedVerse(null), 20000);
@@ -260,11 +253,20 @@ export default function Reading() {
     }
   }, [highlightedVerse]);
 
+  // Astuce visuelle à l’activation de la sélection
+  useEffect(() => {
+    if (selectionMode) {
+      setShowSelectionTip(true);
+      const t = setTimeout(() => setShowSelectionTip(false), 3000);
+      return () => clearTimeout(t);
+    } else {
+      setShowSelectionTip(false);
+    }
+  }, [selectionMode]);
+
   // ===== Sélection multiple & copie =====
   const toggleSelectVerse = (num: number) => {
-    setSelectedVerses((prev) =>
-      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
-    );
+    setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
 
   const compressRanges = (nums: number[]) => {
@@ -273,12 +275,7 @@ export default function Reading() {
     const parts: string[] = [];
     let start = sorted[0];
     let prev = sorted[0];
-
-    const push = () => {
-      if (start === prev) parts.push(`${start}`);
-      else parts.push(`${start}-${prev}`);
-    };
-
+    const push = () => (start === prev ? parts.push(`${start}`) : parts.push(`${start}-${prev}`));
     for (let i = 1; i < sorted.length; i++) {
       const n = sorted[i];
       if (n === prev + 1) prev = n;
@@ -294,9 +291,8 @@ export default function Reading() {
 
   const copySingleVerseFromReading = async (verseNum: number) => {
     if (!selectedBook || !chapter) return;
-    const v = chapter.verses.find((x) => x.verse === verseNum);
+    const v = chapter.verses.find(x => x.verse === verseNum);
     if (!v) return;
-
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${v.verse}`;
     const payload = `${ref}\n${v.verse}. ${v.text}`;
     const ok = await copyToClipboard(payload);
@@ -310,12 +306,12 @@ export default function Reading() {
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
-      .filter((v) => selectedVerses.includes(v.verse))
+      .filter(v => selectedVerses.includes(v.verse))
       .sort((a, b) => a.verse - b.verse);
 
-    const ranges = compressRanges(chosen.map((v) => v.verse));
+    const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-    const body = chosen.map((v) => `${v.verse}. ${v.text}`).join('\n');
+    const body = chosen.map(v => `${v.verse}. ${v.text}`).join('\n');
     const payload = `${ref}\n${body}`;
 
     const ok = await copyToClipboard(payload);
@@ -366,9 +362,7 @@ export default function Reading() {
                         onClick={clearGlobalSearch}
                         aria-label={state.settings.language === 'fr' ? 'Effacer la recherche' : 'Clear search'}
                         className={`p-2 rounded-lg ${
-                          isDark
-                            ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                          isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                         }`}
                       >
                         <X size={18} />
@@ -433,40 +427,37 @@ export default function Reading() {
                   return (
                     <div
                       key={key}
-                      onClick={() => handleVerseClick(verse.book, verse.chapter, verse.verse)} // ⬅️ toute la carte est cliquable
-                      className={`group p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      onClick={() => handleVerseClick(verse.book, verse.chapter, verse.verse)}
+                      className={`group relative p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        isDark ? 'bg-gray-700 border-gray-600 hover:bg-gray-600' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                       }`}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={`${isDark ? 'text-blue-300' : 'text-blue-700'} text-left text-sm font-medium`}>
-                          {verse.reference}
-                        </span>
-
-                        {/* Bouton Copier (mobile toujours visible, desktop au survol) */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyFromSearchResult(verse);
-                          }}
-                          className={`inline-flex items-center text-xs rounded px-2 py-1 transition 
-                                      ${isDark ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
-                                      opacity-100 md:opacity-0 md:group-hover:opacity-100`}
-                          title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
-                        >
-                          {copied ? <Check size={14} className="mr-1" /> : <CopyIcon size={14} className="mr-1" />}
+                      {/* bouton copier en absolu (ne réduit pas la largeur du texte) */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyFromSearchResult(verse);
+                        }}
+                        className={`absolute right-2 top-2 inline-flex items-center text-xs rounded px-2 py-1 transition 
+                                    ${isDark ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
+                                    opacity-100 md:opacity-0 md:group-hover:opacity-100`}
+                        title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
+                      >
+                        {copied ? <Check size={14} className="mr-1 hidden sm:inline" /> : <CopyIcon size={14} className="mr-1 hidden sm:inline" />}
+                        <CopyIcon size={14} className="sm:hidden" />
+                        <span className="hidden sm:inline">
                           {copied ? (state.settings.language === 'fr' ? 'Copié' : 'Copied') : (state.settings.language === 'fr' ? 'Copier' : 'Copy')}
-                        </button>
+                        </span>
+                      </button>
+
+                      <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} text-left text-sm font-medium mb-1`}>
+                        {verse.reference}
                       </div>
 
                       <div
                         className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
                         style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                        dangerouslySetInnerHTML={{
-                          __html: highlightText(verse.text, globalSearchTerm),
-                        }}
+                        dangerouslySetInnerHTML={{ __html: highlightText(verse.text, globalSearchTerm) }}
                       />
                     </div>
                   );
@@ -477,9 +468,7 @@ export default function Reading() {
                 <button
                   onClick={clearGlobalSearch}
                   className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
-                    isDark
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                    isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                   }`}
                 >
                   {state.settings.language === 'fr' ? 'Fermer la recherche' : 'Close search'}
@@ -496,16 +485,12 @@ export default function Reading() {
                 {state.settings.language === 'fr' ? 'Aucun résultat trouvé' : 'No results found'}
               </h3>
               <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
-                {state.settings.language === 'fr'
-                  ? `Aucun verset trouvé pour "${globalSearchTerm}" dans la Bible`
-                  : `No verses found for "${globalSearchTerm}" in the Bible`}
+                {state.settings.language === 'fr' ? `Aucun verset trouvé pour "${globalSearchTerm}" dans la Bible` : `No verses found for "${globalSearchTerm}" in the Bible`}
               </p>
               <button
                 onClick={clearGlobalSearch}
                 className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  isDark
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                  isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                 }`}
               >
                 {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
@@ -514,31 +499,26 @@ export default function Reading() {
           )}
 
           <div className={`grid grid-cols-1 lg:grid-cols-4 gap-6 ${showGlobalSearch ? 'opacity-75' : ''}`}>
-            {/* Liste des livres — visible en sidebar à partir de lg */}
+            {/* Sidebar livres (desktop) */}
             <div className={`hidden lg:block lg:col-span-1 ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
                 <Book size={20} className="mr-2" />
                 {t('selectBook')}
               </h2>
 
-              {/* Ancien Testament */}
               <div className="mb-6">
                 <h3 className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'} uppercase tracking-wide`}>
                   {t('oldTestament')}
                 </h3>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {oldTestamentBooks.map((book) => (
+                  {oldTestamentBooks.map(book => (
                     <button
                       key={book.name}
                       onClick={() => handleBookSelect(book)}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                         selectedBook?.name === book.name
-                          ? isDark
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-blue-100 text-blue-800'
-                          : isDark
-                          ? 'hover:bg-gray-700 text-gray-300 hover:text-white'
-                          : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'
+                          ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
+                          : isDark ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'
                       }`}
                     >
                       {getBookName(book)}
@@ -547,24 +527,19 @@ export default function Reading() {
                 </div>
               </div>
 
-              {/* Nouveau Testament */}
               <div>
                 <h3 className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'} uppercase tracking-wide`}>
                   {t('newTestament')}
                 </h3>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {newTestamentBooks.map((book) => (
+                  {newTestamentBooks.map(book => (
                     <button
                       key={book.name}
                       onClick={() => handleBookSelect(book)}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                         selectedBook?.name === book.name
-                          ? isDark
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-blue-100 text-blue-800'
-                          : isDark
-                          ? 'hover:bg-gray-700 text-gray-300 hover:text-white'
-                          : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'
+                          ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
+                          : isDark ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'
                       }`}
                     >
                       {getBookName(book)}
@@ -588,9 +563,7 @@ export default function Reading() {
                       {/* Bouton Livres (mobile) */}
                       <button
                         onClick={() => setShowBookPicker(true)}
-                        className={`lg:hidden px-3 py-2 rounded-lg text-sm font-medium ${
-                          isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}
+                        className={`lg:hidden px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'}`}
                       >
                         {state.settings.language === 'fr' ? 'Livres' : 'Books'}
                       </button>
@@ -601,12 +574,8 @@ export default function Reading() {
                           disabled={selectedChapter <= 1}
                           className={`p-2 rounded-lg transition-all duration-200 ${
                             selectedChapter <= 1
-                              ? isDark
-                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : isDark
-                              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                              : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                              ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                           }`}
                         >
                           <ChevronLeft size={16} />
@@ -616,14 +585,10 @@ export default function Reading() {
                           <select
                             value={selectedChapter}
                             onChange={(e) => handleChapterSelect(Number(e.target.value))}
-                            className={`appearance-none ${
-                              isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                            } border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                            className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
                           >
-                            {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => (
-                              <option key={num} value={num}>
-                                {num}
-                              </option>
+                            {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(num => (
+                              <option key={num} value={num}>{num}</option>
                             ))}
                           </select>
                           <ChevronDown size={16} className={`absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
@@ -634,64 +599,55 @@ export default function Reading() {
                           disabled={selectedChapter >= selectedBook.chapters}
                           className={`p-2 rounded-lg transition-all duration-200 ${
                             selectedChapter >= selectedBook.chapters
-                              ? isDark
-                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : isDark
-                              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                              : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                              ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                           }`}
                         >
                           <ChevronRight size={16} />
                         </button>
                       </div>
 
-                      {/* Bouton Sélection */}
+                      {/* Sélection */}
                       <button
                         onClick={() => {
-                          setSelectionMode((v) => !v);
+                          setSelectionMode(v => !v);
                           setSelectedVerses([]);
                         }}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
                           selectionMode
-                            ? isDark
-                              ? 'bg-yellow-600 text-white hover:bg-yellow-500'
-                              : 'bg-yellow-500 text-white hover:bg-yellow-400'
-                            : isDark
-                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? isDark ? 'bg-yellow-600 text-white hover:bg-yellow-500' : 'bg-yellow-500 text-white hover:bg-yellow-400'
+                            : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                         title={state.settings.language === 'fr' ? 'Sélectionner des versets' : 'Select verses'}
                       >
-                        {state.settings.language === 'fr'
-                          ? selectionMode ? 'Sélection (on)' : 'Sélection'
-                          : selectionMode ? 'Select (on)' : 'Select'}
+                        {state.settings.language === 'fr' ? (selectionMode ? 'Sélection (on)' : 'Sélection') : (selectionMode ? 'Select (on)' : 'Select')}
                       </button>
                     </div>
                   </div>
+
+                  {/* Tip sélection */}
+                  {selectionMode && showSelectionTip && (
+                    <div className={`sm:hidden mb-3 rounded-lg p-3 ${isDark ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-700'}`}>
+                      {state.settings.language === 'fr' ? 'Sélection active — touchez les versets pour les cocher.' : 'Selection enabled — tap verses to check them.'}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Barre d’action sélection */}
+              {/* Barre d’action sélection — desktop/tablette */}
               {selectionMode && selectedVerses.length > 0 && (
-                <div className={`mb-3 rounded-lg p-3 flex items-center justify-between ${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow`}>
+                <div className={`hidden sm:flex mb-3 rounded-lg p-3 items-center justify-between ${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow`}>
                   <div className="text-sm">
                     {state.settings.language === 'fr'
                       ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
                       : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
                   </div>
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={copySelection}
-                      className={`inline-flex items-center px-3 py-2 rounded ${isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
-                    >
+                    <button onClick={copySelection} className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
                       <CopyIcon size={16} className="mr-2" />
                       {state.settings.language === 'fr' ? 'Copier la sélection' : 'Copy selection'}
                     </button>
-                    <button
-                      onClick={() => setSelectedVerses([])}
-                      className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}
-                    >
+                    <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}>
                       {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
                     </button>
                   </div>
@@ -706,10 +662,7 @@ export default function Reading() {
                     <p className="text-sm flex items-center">
                       <BookOpen size={16} className="mr-2" />
                       {state.settings.language === 'fr' ? 'Vous avez repris votre lecture là où vous vous étiez arrêté' : 'You resumed reading where you left off'}
-                      <button
-                        onClick={() => setShowRestoredNotification(false)}
-                        className={`ml-auto text-xs px-2 py-1 rounded ${isDark ? 'hover:bg-blue-800 text-blue-300' : 'hover:bg-blue-100 text-blue-600'}`}
-                      >
+                      <button onClick={() => setShowRestoredNotification(false)} className={`ml-auto text-xs px-2 py-1 rounded ${isDark ? 'hover:bg-blue-800 text-blue-300' : 'hover:bg-blue-100 text-blue-600'}`}>
                         ✕
                       </button>
                     </p>
@@ -727,77 +680,73 @@ export default function Reading() {
                       {getBookName(selectedBook!)} {t('chapter')} {chapter.chapter}
                     </h3>
 
-                    <div className="space-y-3">
+                    {/* Plus d’espace entre les versets pour une lecture continue */}
+                    <div className="space-y-5">
                       {chapter.verses.map((v) => {
                         const isHighlighted = highlightedVerse === v.verse;
                         const isSelected = selectedVerses.includes(v.verse);
 
-                        const rowClasses = ['flex items-start rounded-lg px-2 py-2 transition-colors group'];
-                        if (isHighlighted) rowClasses.push(isDark ? 'bg-yellow-900/30' : 'bg-yellow-50');
-                        else if (isSelected) rowClasses.push(isDark ? 'bg-blue-900/20' : 'bg-blue-50');
+                        const baseRow = `${isDark ? 'bg-transparent' : 'bg-transparent'}`;
+                        const selectedBg = isSelected ? (isDark ? 'bg-blue-900/25' : 'bg-blue-50') : '';
+                        const highlightBg = isHighlighted ? (isDark ? 'bg-yellow-900/30' : 'bg-yellow-50') : '';
 
                         return (
-                          <div
-                            key={v.verse}
-                            id={`verse-${v.verse}`}
-                            className={rowClasses.join(' ')}
-                            onClick={() => {
-                              if (selectionMode) toggleSelectVerse(v.verse);
-                            }}
-                          >
-                            {/* case à cocher (visible en mode sélection) */}
-                            <div className="w-6 pt-0.5">
+                          <div key={v.verse} id={`verse-${v.verse}`} className={`relative rounded-lg px-2 py-3 transition-colors ${baseRow} ${selectedBg} ${highlightBg}`}>
+                            {/* Bouton Copier en absolu (mobile + desktop) */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); copySingleVerseFromReading(v.verse); }}
+                              className={`absolute right-2 top-2 text-xs rounded px-2 py-1 transition
+                                          ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                              title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
+                              aria-label={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
+                            >
+                              <CopyIcon size={14} />
+                            </button>
+
+                            {/* MOBILE : numéro inline + case à cocher (si sélection) */}
+                            <label
+                              className="sm:hidden flex items-start gap-2"
+                              onClick={() => { if (selectionMode) toggleSelectVerse(v.verse); }}
+                            >
                               {selectionMode && (
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => toggleSelectVerse(v.verse)}
-                                  className="h-4 w-4 rounded border-gray-400"
-                                  aria-label="select verse"
+                                  className="h-5 w-5 rounded border-gray-400 accent-blue-600 mt-0.5"
                                 />
                               )}
-                            </div>
+                              <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>{v.verse}</span>
+                              <div className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`} style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.8' }}>
+                                {isHighlighted && globalSearchTerm.trim()
+                                  ? <span dangerouslySetInnerHTML={{ __html: highlightText(v.text, globalSearchTerm) }} />
+                                  : v.text}
+                              </div>
+                            </label>
 
-                            {/* numéro */}
-                            <span className={`w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0 pt-0.5`}>
-                              {v.verse}
-                            </span>
-
-                            {/* texte */}
-                            <div className="flex-1">
-                              {isHighlighted && globalSearchTerm.trim() ? (
-                                <div
-                                  className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
-                                  style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                                  dangerouslySetInnerHTML={{ __html: highlightText(v.text, globalSearchTerm) }}
+                            {/* DESKTOP/TABLETTE : colonnes lisibles + grand espacement */}
+                            <div className="hidden sm:flex items-start gap-3">
+                              {selectionMode && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelectVerse(v.verse)}
+                                  className="h-5 w-5 rounded border-gray-400 accent-blue-600 mt-0.5"
                                 />
-                              ) : (
-                                <div
-                                  className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
-                                  style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                                >
-                                  {v.text}
+                              )}
+
+                              <span className={`w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0 pt-0.5`}>
+                                {v.verse}
+                              </span>
+
+                              <div className="flex-1">
+                                <div className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`} style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.9' }}>
+                                  {isHighlighted && globalSearchTerm.trim()
+                                    ? <span dangerouslySetInnerHTML={{ __html: highlightText(v.text, globalSearchTerm) }} />
+                                    : v.text}
                                 </div>
-                              )}
+                              </div>
                             </div>
-
-                            {/* Copie rapide (mobile toujours visible) */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copySingleVerseFromReading(v.verse);
-                              }}
-                              className={`ml-2 self-start text-xs rounded px-2 py-1 transition 
-                                          ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
-                                          opacity-100 md:opacity-0 md:group-hover:opacity-100`}
-                              title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
-                            >
-                              {copiedKey === `read-${selectedBook?.name}-${chapter.chapter}-${v.verse}` ? (
-                                <span className="inline-flex items-center"><Check size={14} className="mr-1" />{state.settings.language === 'fr' ? 'Copié' : 'Copied'}</span>
-                              ) : (
-                                <span className="inline-flex items-center"><CopyIcon size={14} className="mr-1" />{state.settings.language === 'fr' ? 'Copier' : 'Copy'}</span>
-                              )}
-                            </button>
                           </div>
                         );
                       })}
@@ -807,8 +756,7 @@ export default function Reading() {
                   <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     <p className="text-lg mb-2">{t('selectChapter')}</p>
                     <p className="text-sm">
-                      {getBookName(selectedBook)} - {selectedBook.chapters} {t('chapter')}
-                      {selectedBook.chapters > 1 ? 's' : ''}
+                      {getBookName(selectedBook)} - {selectedBook.chapters} {t('chapter')}{selectedBook.chapters > 1 ? 's' : ''}
                     </p>
                   </div>
                 ) : (
@@ -821,41 +769,30 @@ export default function Reading() {
             </div>
           </div>
 
-          {/* ✅ Overlay “Livres” pour mobile */}
+          {/* Overlay Livres (mobile) */}
           {showBookPicker && (
             <div className="fixed inset-0 z-50">
-              <div
-                className="absolute inset-0 bg-black/60"
-                onClick={() => setShowBookPicker(false)}
-                aria-hidden="true"
-              />
+              <div className="absolute inset-0 bg-black/60" onClick={() => setShowBookPicker(false)} aria-hidden="true" />
               <div className={`absolute inset-0 ${isDark ? 'bg-gray-900' : 'bg-white'} p-4 overflow-y-auto`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
                     {state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
                   </h3>
-                  <button
-                    onClick={() => setShowBookPicker(false)}
-                    className={`${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}
-                  >
+                  <button onClick={() => setShowBookPicker(false)} className={`${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}>
                     {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
                   </button>
                 </div>
 
                 <div className="mb-6">
-                  <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {t('oldTestament')}
-                  </h4>
+                  <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('oldTestament')}</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    {oldTestamentBooks.map((book) => (
+                    {oldTestamentBooks.map(book => (
                       <button
                         key={`m-${book.name}`}
                         onClick={() => handleBookSelect(book)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                          selectedBook?.name === book.name
-                            ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
-                            : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'
-                        }`}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${selectedBook?.name === book.name
+                          ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
+                          : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'}`}
                       >
                         {getBookName(book)}
                       </button>
@@ -864,19 +801,15 @@ export default function Reading() {
                 </div>
 
                 <div>
-                  <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {t('newTestament')}
-                  </h4>
+                  <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('newTestament')}</h4>
                   <div className="grid grid-cols-2 gap-2 pb-10">
-                    {newTestamentBooks.map((book) => (
+                    {newTestamentBooks.map(book => (
                       <button
                         key={`m-${book.name}`}
                         onClick={() => handleBookSelect(book)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                          selectedBook?.name === book.name
-                            ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
-                            : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'
-                        }`}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${selectedBook?.name === book.name
+                          ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
+                          : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'}`}
                       >
                         {getBookName(book)}
                       </button>
@@ -887,7 +820,22 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Badge global "copié" */}
+          {/* Barre flottante (mobile) quand des versets sont cochés */}
+          {selectionMode && selectedVerses.length > 0 && (
+            <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+              <div className={`${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
+                <button onClick={copySelection} className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-600 text-white">
+                  <CopyIcon size={16} className="mr-1" />
+                  {state.settings.language === 'fr' ? 'Copier' : 'Copy'}
+                </button>
+                <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-gray-100' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full`}>
+                  {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Copié */}
           {copiedKey === 'selection' && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow bg-green-600 text-white z-50">
               {state.settings.language === 'fr' ? 'Sélection copiée' : 'Selection copied'}
@@ -898,4 +846,3 @@ export default function Reading() {
     </div>
   );
 }
-
