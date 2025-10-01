@@ -40,7 +40,7 @@ export default function Reading() {
   // 📋 Copie & sélection multiple dans la zone de lecture
   const [selectionMode, setSelectionMode] = useState<boolean>(false);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
-  const [copiedKey, setCopiedKey] = useState<string>(''); // pour clignoter "Copié" sur un item (recherche/lecture)
+  const [copiedKey, setCopiedKey] = useState<string>(''); // pour afficher "Copié" localement
 
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
@@ -148,7 +148,7 @@ export default function Reading() {
     if (bookObj) {
       setSelectedBook(bookObj);
       setSelectedChapter(chapterNum);
-      setHighlightedVerse(verseNum);
+      setHighlightedVerse(verseNum); // ⭐ marquer le verset
       fetchChapter(bookObj, chapterNum);
       setShowGlobalSearch(false);
       saveReadingPosition(book, chapterNum);
@@ -158,9 +158,8 @@ export default function Reading() {
     }
   };
 
-  // Copier un verset depuis la liste de résultats (simple, rapide)
+  // Copier un verset depuis la liste de résultats
   const copyFromSearchResult = async (verse: any) => {
-    // verse.reference vient déjà localisé (FR/EN) depuis le service
     const payload = `${verse.reference}\n${verse.text}`;
     const ok = await copyToClipboard(payload);
     const key = `${verse.book}-${verse.chapter}-${verse.verse}`;
@@ -263,7 +262,7 @@ export default function Reading() {
     }
   }, [highlightedVerse]);
 
-  // ======= Outils de copie (lecture) =======
+  // ======= Outils de sélection / copie (lecture) =======
   const toggleSelectVerse = (num: number) => {
     setSelectedVerses((prev) =>
       prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
@@ -326,21 +325,14 @@ export default function Reading() {
     if (ok) {
       setCopiedKey('selection');
       setTimeout(() => setCopiedKey(''), 1500);
-      // on nettoie la sélection (léger)
+      // on nettoie la sélection
       setSelectionMode(false);
       setSelectedVerses([]);
     }
   };
 
-  const oldTestamentBooks = books.filter(book => book.testament === 'old');
-  const newTestamentBooks = books.filter(book => book.testament === 'new');
-
-  const getBookName = (book: BibleBook) => {
-    return state.settings.language === 'fr' ? book.nameFr : book.nameEn;
-  };
-
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200 overflow-x-hidden`}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* En-tête */}
@@ -395,9 +387,7 @@ export default function Reading() {
                       aria-label={state.settings.language === 'fr' ? 'Lancer la recherche' : 'Start search'}
                       className={`p-2 rounded-lg transition-all duration-200 ${
                         searchInput.trim().length >= MIN_CHARS
-                          ? isDark
-                            ? 'bg-blue-600 text-white hover:bg-blue-500'
-                            : 'bg-blue-600 text-white hover:bg-blue-500'
+                          ? 'bg-blue-600 text-white hover:bg-blue-500'
                           : isDark
                           ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -455,7 +445,7 @@ export default function Reading() {
                   return (
                     <div
                       key={key}
-                      className={`group p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                      className={`group p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
                         isDark
                           ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                           : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
@@ -470,14 +460,15 @@ export default function Reading() {
                           {verse.reference}
                         </button>
 
+                        {/* Visible sur mobile (pas de hover), discret sur desktop */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             copyFromSearchResult(verse);
                           }}
-                          className={`opacity-0 group-hover:opacity-100 inline-flex items-center text-xs rounded px-2 py-1 transition ${
-                            isDark ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
+                          className={`inline-flex items-center text-xs rounded px-2 py-1 transition 
+                                      ${isDark ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
+                                      opacity-100 md:opacity-0 md:group-hover:opacity-100`}
                           title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
                         >
                           {copied ? <Check size={14} className="mr-1" /> : <CopyIcon size={14} className="mr-1" />}
@@ -770,7 +761,7 @@ export default function Reading() {
                         const isSelected = selectedVerses.includes(v.verse);
 
                         const rowClasses = [
-                          'flex rounded-lg p-1 -m-1 transition-colors group'
+                          'flex rounded-lg px-2 py-1 transition-colors group'
                         ];
                         if (isHighlighted) {
                           rowClasses.push(isDark ? 'bg-yellow-900/30' : 'bg-yellow-50');
@@ -815,15 +806,15 @@ export default function Reading() {
                               )}
                             </div>
 
-                            {/* Copie rapide d’un verset (discret) */}
+                            {/* Copie rapide d’un verset : visible sur mobile (pas de hover), discret sur desktop */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 copySingleVerseFromReading(v.verse);
                               }}
-                              className={`opacity-0 group-hover:opacity-100 ml-2 self-start text-xs rounded px-2 py-1 transition ${
-                                isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                              }`}
+                              className={`ml-2 self-start text-xs rounded px-2 py-1 transition 
+                                          ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
+                                          opacity-100 md:opacity-0 md:group-hover:opacity-100`}
                               title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
                             >
                               {copiedKey === `read-${selectedBook?.name}-${chapter.chapter}-${v.verse}` ? (
