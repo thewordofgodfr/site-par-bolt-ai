@@ -33,23 +33,21 @@ export default function Reading() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchHint, setSearchHint] = useState<string>('');
+  const MIN_CHARS = 2;
 
-  // Mise en évidence
+  // Mise en évidence (ex. depuis résultats)
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
 
-  // Sélection multiple & copie
-  const [selectionMode, setSelectionMode] = useState<boolean>(false);
+  // Sélection simple (tap verset)
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [copiedKey, setCopiedKey] = useState<string>('');
-  const [showSelectionTip, setShowSelectionTip] = useState<boolean>(false);
 
-  // Sélecteur de livres (mobile)
+  // Sélecteur livres mobile
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
 
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
   const isDark = state.settings.theme === 'dark';
-  const MIN_CHARS = 2;
 
   // ====== Chargement du chapitre ======
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
@@ -70,7 +68,6 @@ export default function Reading() {
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
     setShowRestoredNotification(false);
-    setSelectionMode(false);
     setSelectedVerses([]);
     setHighlightedVerse(null);
     setShowBookPicker(false);
@@ -82,7 +79,6 @@ export default function Reading() {
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
       setShowRestoredNotification(false);
-      setSelectionMode(false);
       setSelectedVerses([]);
       setHighlightedVerse(null);
     }
@@ -139,7 +135,7 @@ export default function Reading() {
     setSearchHint('');
   };
 
-  const handleVerseClick = (book: string, chapterNum: number, verseNum: number) => {
+  const handleResultClick = (book: string, chapterNum: number, verseNum: number) => {
     const bookObj = books.find(b => b.name === book);
     if (bookObj) {
       setSelectedBook(bookObj);
@@ -148,7 +144,6 @@ export default function Reading() {
       fetchChapter(bookObj, chapterNum);
       setShowGlobalSearch(false);
       saveReadingPosition(book, chapterNum);
-      setSelectionMode(false);
       setSelectedVerses([]);
     }
   };
@@ -230,7 +225,7 @@ export default function Reading() {
     }
   }, [books, selectedBook, state.readingContext]);
 
-  // Scroll + surbrillance (20s)
+  // Scroll + surbrillance (20s) quand on vient d'une recherche
   useEffect(() => {
     if (highlightedVerse !== null && chapter) {
       const id = `verse-${highlightedVerse}`;
@@ -249,18 +244,7 @@ export default function Reading() {
     }
   }, [highlightedVerse]);
 
-  // Aide sélection
-  useEffect(() => {
-    if (selectionMode) {
-      setShowSelectionTip(true);
-      const t = setTimeout(() => setShowSelectionTip(false), 3000);
-      return () => clearTimeout(t);
-    } else {
-      setShowSelectionTip(false);
-    }
-  }, [selectionMode]);
-
-  // ===== Sélection multiple & copie =====
+  // ===== Sélection par tap verset =====
   const toggleSelectVerse = (num: number) => {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
@@ -285,20 +269,6 @@ export default function Reading() {
     return parts.join(',');
   };
 
-  const copySingleVerseFromReading = async (verseNum: number) => {
-    if (!selectedBook || !chapter) return;
-    const v = chapter.verses.find(x => x.verse === verseNum);
-    if (!v) return;
-    const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${v.verse}`;
-    const payload = `${ref}\n${v.verse}. ${v.text}`;
-    const ok = await copyToClipboard(payload);
-    const key = `read-${selectedBook.name}-${chapter.chapter}-${v.verse}`;
-    if (ok) {
-      setCopiedKey(key);
-      setTimeout(() => setCopiedKey(''), 1500);
-    }
-  };
-
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -314,7 +284,6 @@ export default function Reading() {
     if (ok) {
       setCopiedKey('selection');
       setTimeout(() => setCopiedKey(''), 1500);
-      setSelectionMode(false);
       setSelectedVerses([]);
     }
   };
@@ -423,12 +392,12 @@ export default function Reading() {
                   return (
                     <div
                       key={key}
-                      onClick={() => handleVerseClick(verse.book, verse.chapter, verse.verse)}
+                      onClick={() => handleResultClick(verse.book, verse.chapter, verse.verse)}
                       className={`group relative p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
                         isDark ? 'bg-gray-700 border-gray-600 hover:bg-gray-600' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                       }`}
                     >
-                      {/* Copier — desktop/tablette (overlay) */}
+                      {/* Copier — desktop/tablette */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -613,36 +582,13 @@ export default function Reading() {
                           <ChevronRight size={16} />
                         </button>
                       </div>
-
-                      {/* Sélection */}
-                      <button
-                        onClick={() => {
-                          setSelectionMode(v => !v);
-                          setSelectedVerses([]);
-                        }}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                          selectionMode
-                            ? isDark ? 'bg-yellow-600 text-white hover:bg-yellow-500' : 'bg-yellow-500 text-white hover:bg-yellow-400'
-                            : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title={state.settings.language === 'fr' ? 'Sélectionner des versets' : 'Select verses'}
-                      >
-                        {state.settings.language === 'fr' ? (selectionMode ? 'Sélection (on)' : 'Sélection') : (selectionMode ? 'Select (on)' : 'Select')}
-                      </button>
                     </div>
                   </div>
-
-                  {/* Tip sélection */}
-                  {selectionMode && showSelectionTip && (
-                    <div className={`sm:hidden mb-3 rounded-lg p-3 ${isDark ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-700'}`}>
-                      {state.settings.language === 'fr' ? 'Sélection active — touchez les versets pour les cocher.' : 'Selection enabled — tap verses to check them.'}
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Barre d’action sélection — desktop/tablette */}
-              {selectionMode && selectedVerses.length > 0 && (
+              {/* Barre d’action — desktop/tablette */}
+              {selectedVerses.length > 0 && (
                 <div className={`hidden sm:flex mb-3 rounded-lg p-3 items-center justify-between ${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow`}>
                   <div className="text-sm">
                     {state.settings.language === 'fr'
@@ -687,86 +633,29 @@ export default function Reading() {
                       {getBookName(selectedBook!)} {t('chapter')} {chapter.chapter}
                     </h3>
 
-                    {/* ESPACEMENT RÉDUIT */}
-                    <div className="space-y-3 sm:space-y-4">
+                    {/* Resserre + fine ligne entre versets */}
+                    <div className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
                       {chapter.verses.map((v) => {
                         const isHighlighted = highlightedVerse === v.verse;
                         const isSelected = selectedVerses.includes(v.verse);
-
-                        // Styles de sélection + surbrillance visibles
-                        const selectedBg = isSelected ? (isDark ? 'bg-blue-900/50 border-blue-500' : 'bg-blue-100 border-blue-400') : '';
+                        const selectedBg = isSelected ? (isDark ? 'bg-blue-900/40 border-blue-500' : 'bg-blue-50 border-blue-400') : '';
                         const highlightBg = isHighlighted ? (isDark ? 'bg-yellow-900/30' : 'bg-yellow-50') : '';
 
                         return (
                           <div
                             key={v.verse}
                             id={`verse-${v.verse}`}
-                            className={`relative rounded-lg px-2 py-3 transition-colors border-l-4 ${selectedBg} ${highlightBg} ${isSelected ? '' : 'border-transparent'}`}
+                            onClick={() => toggleSelectVerse(v.verse)}
+                            className={`relative cursor-pointer px-2 py-2 sm:py-3 transition-colors border-l-4 ${selectedBg} ${highlightBg} ${isSelected ? '' : 'border-transparent'}`}
                           >
-                            {/* Desktop/Tablet : bouton Copier (overlay discret) */}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); copySingleVerseFromReading(v.verse); }}
-                              className={`hidden sm:inline-flex absolute right-2 top-2 text-xs rounded px-2 py-1 transition
-                                          ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                              title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
-                              aria-label={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
-                            >
-                              <CopyIcon size={14} />
-                            </button>
-
-                            {/* MOBILE : contenu */}
-                            <label
-                              className="sm:hidden flex items-start gap-2"
-                              onClick={() => { if (selectionMode) toggleSelectVerse(v.verse); }}
-                            >
-                              {selectionMode && (
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleSelectVerse(v.verse)}
-                                  className="h-5 w-5 rounded border-gray-400 accent-blue-600 mt-0.5"
-                                />
-                              )}
-                              <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5 flex items-center gap-1`}>
-                                {v.verse}
-                                {isSelected && <Check size={14} className={isDark ? 'text-blue-300' : 'text-blue-600'} />}
-                              </span>
-                              <div className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`} style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}>
-                                {isHighlighted && globalSearchTerm.trim()
-                                  ? <span dangerouslySetInnerHTML={{ __html: highlightText(v.text, globalSearchTerm) }} />
-                                  : v.text}
-                              </div>
-                            </label>
-
-                            {/* MOBILE : bouton Copier sous le texte (pas d’overlay) */}
-                            <div className="sm:hidden mt-2 text-right">
-                              <button
-                                onClick={() => copySingleVerseFromReading(v.verse)}
-                                className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} inline-flex items-center text-xs rounded px-2 py-1`}
-                              >
-                                <CopyIcon size={14} className="mr-1" />
-                                {state.settings.language === 'fr' ? 'Copier' : 'Copy'}
-                              </button>
-                            </div>
-
-                            {/* DESKTOP/TABLETTE */}
-                            <div className="hidden sm:flex items-start gap-3">
-                              {selectionMode && (
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleSelectVerse(v.verse)}
-                                  className="h-5 w-5 rounded border-gray-400 accent-blue-600 mt-0.5"
-                                />
-                              )}
-
+                            <div className="flex items-start gap-3">
                               <span className={`w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0 pt-0.5 flex items-center gap-1`}>
                                 {v.verse}
                                 {isSelected && <Check size={14} className={isDark ? 'text-blue-300' : 'text-blue-600'} />}
                               </span>
 
                               <div className="flex-1">
-                                <div className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`} style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.8' }}>
+                                <div className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`} style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}>
                                   {isHighlighted && globalSearchTerm.trim()
                                     ? <span dangerouslySetInnerHTML={{ __html: highlightText(v.text, globalSearchTerm) }} />
                                     : v.text}
@@ -846,8 +735,8 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Barre flottante (mobile) quand des versets sont cochés */}
-          {selectionMode && selectedVerses.length > 0 && (
+          {/* Barre flottante (mobile) + actions (desktop) */}
+          {selectedVerses.length > 0 && (
             <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
               <div className={`${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
                 <button onClick={copySelection} className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-600 text-white">
