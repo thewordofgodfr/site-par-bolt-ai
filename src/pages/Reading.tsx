@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { getBibleBooks, getChapter, searchInBible } from '../services/bibleService';
+import { getBibleBooks, getChapter, searchInBible, copyToClipboard } from '../services/bibleService';
 import { BibleBook, BibleChapter } from '../types/bible';
-import { ChevronDown, Book, ChevronLeft, ChevronRight, Search, X, BookOpen } from 'lucide-react';
+import {
+  ChevronDown,
+  Book,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+  BookOpen,
+  Copy as CopyIcon,
+  Check
+} from 'lucide-react';
 import { highlightText } from '../utils/searchUtils';
 
 export default function Reading() {
@@ -16,13 +26,21 @@ export default function Reading() {
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 🔎 Recherche "manuelle" (clic loupe / Entrée)
+  // 🔎 Recherche "manuelle" (loupe / Entrée)
   const [searchInput, setSearchInput] = useState<string>('');           // ce que l’utilisateur tape
   const [globalSearchTerm, setGlobalSearchTerm] = useState<string>(''); // terme effectivement recherché
   const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchHint, setSearchHint] = useState<string>('');             // message d’aide
+
+  // ⭐ Mise en évidence temporaire du verset choisi depuis la recherche
+  const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
+
+  // 📋 Copie & sélection multiple dans la zone de lecture
+  const [selectionMode, setSelectionMode] = useState<boolean>(false);
+  const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
+  const [copiedKey, setCopiedKey] = useState<string>(''); // pour clignoter "Copié" sur un item (recherche/lecture)
 
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
@@ -47,6 +65,10 @@ export default function Reading() {
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
     setShowRestoredNotification(false);
+    // reset sélection / highlight
+    setSelectionMode(false);
+    setSelectedVerses([]);
+    setHighlightedVerse(null);
   };
 
   const handleChapterSelect = (chapterNum: number) => {
@@ -55,6 +77,10 @@ export default function Reading() {
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
       setShowRestoredNotification(false);
+      // reset sélection / highlight
+      setSelectionMode(false);
+      setSelectedVerses([]);
+      setHighlightedVerse(null);
     }
   };
 
@@ -116,14 +142,31 @@ export default function Reading() {
     setSearchHint('');
   };
 
-  const handleVerseClick = (book: string, chapter: number) => {
+  // ⤴️ Clic résultat : aller au chapitre + mettre en évidence le verset
+  const handleVerseClick = (book: string, chapterNum: number, verseNum: number) => {
     const bookObj = books.find(b => b.name === book);
     if (bookObj) {
       setSelectedBook(bookObj);
-      setSelectedChapter(chapter);
-      fetchChapter(bookObj, chapter);
+      setSelectedChapter(chapterNum);
+      setHighlightedVerse(verseNum);
+      fetchChapter(bookObj, chapterNum);
       setShowGlobalSearch(false);
-      saveReadingPosition(book, chapter);
+      saveReadingPosition(book, chapterNum);
+      // sortir du mode sélection si actif
+      setSelectionMode(false);
+      setSelectedVerses([]);
+    }
+  };
+
+  // Copier un verset depuis la liste de résultats (simple, rapide)
+  const copyFromSearchResult = async (verse: any) => {
+    // verse.reference vient déjà localisé (FR/EN) depuis le service
+    const payload = `${verse.reference}\n${verse.text}`;
+    const ok = await copyToClipboard(payload);
+    const key = `${verse.book}-${verse.chapter}-${verse.verse}`;
+    if (ok) {
+      setCopiedKey(`search-${key}`);
+      setTimeout(() => setCopiedKey(''), 1500);
     }
   };
 
@@ -134,7 +177,7 @@ export default function Reading() {
     return state.settings.language === 'fr' ? book.nameFr : book.nameEn;
   };
 
-  // Navigation depuis contexte (ex: clic d’un verset)
+  // Navigation depuis un contexte externe
   useEffect(() => {
     if (state.readingContext) {
       const book = books.find(b => b.name === state.readingContext!.book);
@@ -170,9 +213,9 @@ export default function Reading() {
         }
       })();
     }
-  }, [state.settings.language]); // uniquement sur changement de langue
+  }, [state.settings.language]);
 
-  // Premier chargement : restaurer position récente sinon Matthieu 1
+  // Chargement initial : restauration ou Matthieu 1
   useEffect(() => {
     if (!selectedBook && !state.readingContext) {
       const lastPosition = state.settings.lastReadingPosition;
@@ -199,6 +242,102 @@ export default function Reading() {
       }
     }
   }, [books, selectedBook, state.readingContext]);
+
+  // 🔔 Après chargement du chapitre, scroller vers le verset mis en évidence
+  useEffect(() => {
+    if (highlightedVerse !== null && chapter) {
+      const id = `verse-${highlightedVerse}`;
+      const timer = setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [chapter, highlightedVerse]);
+
+  // ⏳ Retirer le highlight automatiquement après quelques secondes
+  useEffect(() => {
+    if (highlightedVerse !== null) {
+      const t = setTimeout(() => setHighlightedVerse(null), 6000); // 6s
+      return () => clearTimeout(t);
+    }
+  }, [highlightedVerse]);
+
+  // ======= Outils de copie (lecture) =======
+  const toggleSelectVerse = (num: number) => {
+    setSelectedVerses((prev) =>
+      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
+    );
+  };
+
+  const compressRanges = (nums: number[]) => {
+    if (nums.length === 0) return '';
+    const sorted = [...nums].sort((a, b) => a - b);
+    const parts: string[] = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+
+    const push = () => {
+      if (start === prev) parts.push(`${start}`);
+      else parts.push(`${start}-${prev}`);
+    };
+
+    for (let i = 1; i < sorted.length; i++) {
+      const n = sorted[i];
+      if (n === prev + 1) {
+        prev = n;
+      } else {
+        push();
+        start = n;
+        prev = n;
+      }
+    }
+    push();
+    return parts.join(',');
+  };
+
+  const copySingleVerseFromReading = async (verseNum: number) => {
+    if (!selectedBook || !chapter) return;
+    const v = chapter.verses.find((x) => x.verse === verseNum);
+    if (!v) return;
+
+    const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${v.verse}`;
+    const payload = `${ref}\n${v.verse}. ${v.text}`;
+    const ok = await copyToClipboard(payload);
+    const key = `read-${selectedBook.name}-${chapter.chapter}-${v.verse}`;
+    if (ok) {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(''), 1500);
+    }
+  };
+
+  const copySelection = async () => {
+    if (!selectedBook || !chapter || selectedVerses.length === 0) return;
+    const chosen = chapter.verses
+      .filter((v) => selectedVerses.includes(v.verse))
+      .sort((a, b) => a.verse - b.verse);
+
+    const ranges = compressRanges(chosen.map((v) => v.verse));
+    const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
+    const body = chosen.map((v) => `${v.verse}. ${v.text}`).join('\n');
+    const payload = `${ref}\n${body}`;
+
+    const ok = await copyToClipboard(payload);
+    if (ok) {
+      setCopiedKey('selection');
+      setTimeout(() => setCopiedKey(''), 1500);
+      // on nettoie la sélection (léger)
+      setSelectionMode(false);
+      setSelectedVerses([]);
+    }
+  };
+
+  const oldTestamentBooks = books.filter(book => book.testament === 'old');
+  const newTestamentBooks = books.filter(book => book.testament === 'new');
+
+  const getBookName = (book: BibleBook) => {
+    return state.settings.language === 'fr' ? book.nameFr : book.nameEn;
+  };
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
@@ -310,33 +449,52 @@ export default function Reading() {
               </h2>
 
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {globalSearchResults.map((verse: any) => (
-                  <div
-                    key={`${verse.book}-${verse.chapter}-${verse.verse}`}
-                    onClick={() => handleVerseClick(verse.book, verse.chapter)}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
-                      isDark
-                        ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                        {verse.reference}
-                      </span>
-                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {state.settings.language === 'fr' ? 'Cliquer pour aller au chapitre' : 'Click to go to chapter'}
-                      </span>
-                    </div>
+                {globalSearchResults.map((verse: any) => {
+                  const key = `${verse.book}-${verse.chapter}-${verse.verse}`;
+                  const copied = copiedKey === `search-${key}`;
+                  return (
                     <div
-                      className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
-                      style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                      dangerouslySetInnerHTML={{
-                        __html: highlightText(verse.text, globalSearchTerm),
-                      }}
-                    />
-                  </div>
-                ))}
+                      key={key}
+                      className={`group p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        isDark
+                          ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <button
+                          onClick={() => handleVerseClick(verse.book, verse.chapter, verse.verse)}
+                          className={`${isDark ? 'text-blue-400' : 'text-blue-600'} text-left text-sm font-medium hover:underline`}
+                          title={state.settings.language === 'fr' ? 'Aller au chapitre' : 'Go to chapter'}
+                        >
+                          {verse.reference}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyFromSearchResult(verse);
+                          }}
+                          className={`opacity-0 group-hover:opacity-100 inline-flex items-center text-xs rounded px-2 py-1 transition ${
+                            isDark ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                          title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
+                        >
+                          {copied ? <Check size={14} className="mr-1" /> : <CopyIcon size={14} className="mr-1" />}
+                          {copied ? (state.settings.language === 'fr' ? 'Copié' : 'Copied') : (state.settings.language === 'fr' ? 'Copier' : 'Copy')}
+                        </button>
+                      </div>
+
+                      <div
+                        className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
+                        style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
+                        dangerouslySetInnerHTML={{
+                          __html: highlightText(verse.text, globalSearchTerm),
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="mt-4 text-center">
@@ -449,11 +607,8 @@ export default function Reading() {
                       {getBookName(selectedBook)}
                     </h2>
 
-                    {/* Sélecteur de chapitre */}
-                    <div className="flex items-center space-x-4">
-                      <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'} flex items-center`}>
-                        <span className="text-base font-semibold">{t('chapter')}:</span>
-                      </label>
+                    {/* Sélecteur de chapitre + Sélection */}
+                    <div className="flex items-center space-x-3">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={handlePreviousChapter}
@@ -509,7 +664,61 @@ export default function Reading() {
                           <ChevronRight size={16} />
                         </button>
                       </div>
+
+                      {/* Bouton Sélection */}
+                      <button
+                        onClick={() => {
+                          setSelectionMode((v) => !v);
+                          setSelectedVerses([]);
+                        }}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                          selectionMode
+                            ? isDark
+                              ? 'bg-yellow-600 text-white hover:bg-yellow-500'
+                              : 'bg-yellow-500 text-white hover:bg-yellow-400'
+                            : isDark
+                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title={state.settings.language === 'fr' ? 'Sélectionner des versets' : 'Select verses'}
+                      >
+                        {state.settings.language === 'fr'
+                          ? selectionMode ? 'Sélection (on)' : 'Sélection'
+                          : selectionMode ? 'Select (on)' : 'Select'}
+                      </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Barre d’action quand des versets sont sélectionnés */}
+              {selectionMode && selectedVerses.length > 0 && (
+                <div
+                  className={`mb-3 rounded-lg p-3 flex items-center justify-between ${
+                    isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'
+                  } shadow`}
+                >
+                  <div className="text-sm">
+                    {state.settings.language === 'fr'
+                      ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
+                      : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={copySelection}
+                      className={`inline-flex items-center px-3 py-2 rounded ${
+                        isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'
+                      }`}
+                    >
+                      <CopyIcon size={16} className="mr-2" />
+                      {state.settings.language === 'fr' ? 'Copier la sélection' : 'Copy selection'}
+                    </button>
+                    <button
+                      onClick={() => setSelectedVerses([])}
+                      className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}
+                    >
+                      {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -554,24 +763,78 @@ export default function Reading() {
                     <h3 className={`text-xl font-semibold mb-6 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                       {getBookName(selectedBook!)} {t('chapter')} {chapter.chapter}
                     </h3>
+
                     <div className="space-y-4">
-                      {chapter.verses.map((verse) => (
-                        <div key={verse.verse} className="flex">
-                          <span
-                            className={`inline-block w-8 text-sm font-medium ${
-                              isDark ? 'text-gray-400' : 'text-gray-500'
-                            } flex-shrink-0`}
-                          >
-                            {verse.verse}
-                          </span>
+                      {chapter.verses.map((v) => {
+                        const isHighlighted = highlightedVerse === v.verse;
+                        const isSelected = selectedVerses.includes(v.verse);
+
+                        const rowClasses = [
+                          'flex rounded-lg p-1 -m-1 transition-colors group'
+                        ];
+                        if (isHighlighted) {
+                          rowClasses.push(isDark ? 'bg-yellow-900/30' : 'bg-yellow-50');
+                        } else if (isSelected) {
+                          rowClasses.push(isDark ? 'bg-blue-900/20' : 'bg-blue-50');
+                        }
+
+                        return (
                           <div
-                            className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
-                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
+                            key={v.verse}
+                            id={`verse-${v.verse}`}
+                            className={rowClasses.join(' ')}
+                            onClick={() => {
+                              if (selectionMode) toggleSelectVerse(v.verse);
+                            }}
                           >
-                            {verse.text}
+                            <span
+                              className={`inline-block w-8 text-sm font-medium ${
+                                isDark ? 'text-gray-400' : 'text-gray-500'
+                              } flex-shrink-0`}
+                              title={state.settings.language === 'fr' ? 'Numéro de verset' : 'Verse number'}
+                            >
+                              {v.verse}
+                            </span>
+
+                            <div className="flex-1">
+                              {isHighlighted && globalSearchTerm.trim() ? (
+                                <div
+                                  className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
+                                  style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: highlightText(v.text, globalSearchTerm),
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
+                                  style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
+                                >
+                                  {v.text}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Copie rapide d’un verset (discret) */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copySingleVerseFromReading(v.verse);
+                              }}
+                              className={`opacity-0 group-hover:opacity-100 ml-2 self-start text-xs rounded px-2 py-1 transition ${
+                                isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                              title={state.settings.language === 'fr' ? 'Copier ce verset' : 'Copy this verse'}
+                            >
+                              {copiedKey === `read-${selectedBook?.name}-${chapter.chapter}-${v.verse}` ? (
+                                <span className="inline-flex items-center"><Check size={14} className="mr-1" />{state.settings.language === 'fr' ? 'Copié' : 'Copied'}</span>
+                              ) : (
+                                <span className="inline-flex items-center"><CopyIcon size={14} className="mr-1" />{state.settings.language === 'fr' ? 'Copier' : 'Copy'}</span>
+                              )}
+                            </button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ) : selectedBook ? (
@@ -591,9 +854,16 @@ export default function Reading() {
               </div>
             </div>
           </div>
+
+          {/* Badge global "copié" (léger) */}
+          {copiedKey === 'selection' && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow
+               bg-green-600 text-white">
+              {state.settings.language === 'fr' ? 'Sélection copiée' : 'Selection copied'}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
