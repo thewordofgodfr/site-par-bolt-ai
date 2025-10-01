@@ -9,18 +9,25 @@ import { highlightText } from '../utils/searchUtils';
 export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
+
   const [books] = useState<BibleBook[]>(getBibleBooks());
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
-  const [globalSearchTerm, setGlobalSearchTerm] = useState<string>('');
+
+  // 🔎 Recherche "manuelle" (clic loupe / Entrée)
+  const [searchInput, setSearchInput] = useState<string>('');           // ce que l’utilisateur tape
+  const [globalSearchTerm, setGlobalSearchTerm] = useState<string>(''); // terme effectivement recherché
   const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchHint, setSearchHint] = useState<string>('');             // message d’aide
+
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
   const isDark = state.settings.theme === 'dark';
+  const MIN_CHARS = 2;
 
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
     setLoading(true);
@@ -39,7 +46,7 @@ export default function Reading() {
     setSelectedChapter(1);
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
-    setShowRestoredNotification(false); // cacher la notif quand l'utilisateur change de livre
+    setShowRestoredNotification(false);
   };
 
   const handleChapterSelect = (chapterNum: number) => {
@@ -47,7 +54,7 @@ export default function Reading() {
     if (selectedBook) {
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
-      setShowRestoredNotification(false); // cacher la notif quand l'utilisateur change de chapitre
+      setShowRestoredNotification(false);
     }
   };
 
@@ -63,20 +70,28 @@ export default function Reading() {
     }
   };
 
-  const handleGlobalSearch = async (term: string) => {
-    setGlobalSearchTerm(term);
-
-    if (!term.trim()) {
-      setGlobalSearchResults([]);
+  // Lancer explicitement la recherche
+  const performSearch = async (term: string) => {
+    const trimmed = term.trim();
+    if (trimmed.length < MIN_CHARS) {
+      setSearchHint(
+        state.settings.language === 'fr'
+          ? `Tape au moins ${MIN_CHARS} caractères pour rechercher`
+          : `Type at least ${MIN_CHARS} characters to search`
+      );
       setShowGlobalSearch(false);
+      setGlobalSearchResults([]);
+      setGlobalSearchTerm('');
       return;
     }
 
+    setSearchHint('');
     setSearchLoading(true);
     setShowGlobalSearch(true);
+    setGlobalSearchTerm(trimmed);
 
     try {
-      const results = await searchInBible(term, state.settings.language);
+      const results = await searchInBible(trimmed, state.settings.language);
       setGlobalSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
@@ -86,10 +101,19 @@ export default function Reading() {
     }
   };
 
+  // Soumission via Entrée
+  const handleSubmitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(searchInput);
+  };
+
+  // Effacer recherche + champ
   const clearGlobalSearch = () => {
+    setSearchInput('');
     setGlobalSearchTerm('');
     setGlobalSearchResults([]);
     setShowGlobalSearch(false);
+    setSearchHint('');
   };
 
   const handleVerseClick = (book: string, chapter: number) => {
@@ -110,7 +134,7 @@ export default function Reading() {
     return state.settings.language === 'fr' ? book.nameFr : book.nameEn;
   };
 
-  // Navigation depuis un clic sur un verset (depuis la recherche globale, etc.)
+  // Navigation depuis contexte (ex: clic d’un verset)
   useEffect(() => {
     if (state.readingContext) {
       const book = books.find(b => b.name === state.readingContext!.book);
@@ -118,27 +142,19 @@ export default function Reading() {
         setSelectedBook(book);
         setSelectedChapter(state.readingContext!.chapter);
         fetchChapter(book, state.readingContext!.chapter);
-        // Nettoyer le contexte après usage
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       }
     }
   }, [state.readingContext, books, dispatch]);
 
-  /**
-   * 🔁 IMPORTANT : Quand la langue change, on:
-   *  1) recharge le chapitre courant dans la nouvelle langue,
-   *  2) re-sauvegarde la position de lecture (utile pour restaurer par langue),
-   *  3) relance la recherche globale si elle est ouverte, dans la nouvelle langue.
-   */
+  // Quand la langue change : recharger chapitre + relancer la recherche ouverte
   useEffect(() => {
-    // Recharger le chapitre en cours
     if (selectedBook && selectedChapter) {
       fetchChapter(selectedBook, selectedChapter);
       saveReadingPosition(selectedBook.name, selectedChapter);
       setShowRestoredNotification(false);
     }
 
-    // Relancer la recherche globale si un terme est actif
     if (globalSearchTerm.trim()) {
       (async () => {
         setSearchLoading(true);
@@ -154,15 +170,15 @@ export default function Reading() {
         }
       })();
     }
-  }, [state.settings.language]); // <-- effet dépend uniquement de la langue
+  }, [state.settings.language]); // uniquement sur changement de langue
 
-  // Chargement automatique au premier rendu : restaure la position récente, sinon Matthieu 1
+  // Premier chargement : restaurer position récente sinon Matthieu 1
   useEffect(() => {
     if (!selectedBook && !state.readingContext) {
       const lastPosition = state.settings.lastReadingPosition;
 
       if (lastPosition && lastPosition.timestamp) {
-        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
         if (lastPosition.timestamp > thirtyDaysAgo) {
           const savedBook = books.find(b => b.name === lastPosition.book);
           if (savedBook) {
@@ -175,7 +191,6 @@ export default function Reading() {
         }
       }
 
-      // Fallback : Matthieu 1
       const matthewBook = books.find(b => b.name === 'Matthew');
       if (matthewBook) {
         setSelectedBook(matthewBook);
@@ -195,61 +210,98 @@ export default function Reading() {
               {t('reading')}
             </h1>
 
-            {/* Barre de recherche globale */}
+            {/* Barre de recherche globale — mode "soumission" */}
             <div className="max-w-2xl mx-auto mt-6">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search size={20} className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-                </div>
-                <input
-                  type="text"
-                  value={globalSearchTerm}
-                  onChange={(e) => handleGlobalSearch(e.target.value)}
-                  placeholder={state.settings.language === 'fr' ? 'Rechercher dans toute la Bible...' : 'Search in the entire Bible...'}
-                  className={`w-full pl-12 pr-12 py-4 rounded-xl border-2 transition-all duration-200 text-lg ${
-                    isDark
-                      ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500'
-                  } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
-                />
-                {globalSearchTerm && (
-                  <button
-                    onClick={clearGlobalSearch}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                  >
-                    <X size={20} className={`${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'} transition-colors duration-200`} />
-                  </button>
-                )}
-              </div>
+              <form onSubmit={handleSubmitSearch}>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search size={20} className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                  </div>
 
-              {/* Compteur des résultats */}
-              {globalSearchTerm && (
-                <div className="mt-3">
-                  {searchLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className={`animate-spin rounded-full h-5 w-5 border-b-2 mr-2 ${isDark ? 'border-blue-4 00' : 'border-blue-600'}`}></div>
-                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {state.settings.language === 'fr' ? 'Recherche en cours...' : 'Searching...'}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {globalSearchResults.length > 0
-                        ? state.settings.language === 'fr'
-                          ? `${globalSearchResults.length} verset${globalSearchResults.length > 1 ? 's' : ''} trouvé${globalSearchResults.length > 1 ? 's' : ''} dans toute la Bible`
-                          : `${globalSearchResults.length} verse${globalSearchResults.length > 1 ? 's' : ''} found in the entire Bible`
-                        : state.settings.language === 'fr'
-                          ? 'Aucun verset trouvé dans la Bible'
-                          : 'No verses found in the Bible'
-                      }
-                    </p>
-                  )}
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder={
+                      state.settings.language === 'fr'
+                        ? 'Rechercher dans toute la Bible... (tape puis Entrée ou clique sur la loupe)'
+                        : 'Search the whole Bible... (type then Enter or click the magnifier)'
+                    }
+                    className={`w-full pl-12 pr-24 py-4 rounded-xl border-2 transition-all duration-200 text-lg ${
+                      isDark
+                        ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+                  />
+
+                  {/* Actions à droite : Effacer + Loupe */}
+                  <div className="absolute inset-y-0 right-0 pr-2 flex items-center space-x-1">
+                    {(searchInput || showGlobalSearch) && (
+                      <button
+                        type="button"
+                        onClick={clearGlobalSearch}
+                        aria-label={state.settings.language === 'fr' ? 'Effacer la recherche' : 'Clear search'}
+                        className={`p-2 rounded-lg ${
+                          isDark
+                            ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+
+                    <button
+                      type="submit"
+                      aria-label={state.settings.language === 'fr' ? 'Lancer la recherche' : 'Start search'}
+                      className={`p-2 rounded-lg transition-all duration-200 ${
+                        searchInput.trim().length >= MIN_CHARS
+                          ? isDark
+                            ? 'bg-blue-600 text-white hover:bg-blue-500'
+                            : 'bg-blue-600 text-white hover:bg-blue-500'
+                          : isDark
+                          ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                      disabled={searchInput.trim().length < MIN_CHARS}
+                    >
+                      <Search size={18} />
+                    </button>
+                  </div>
                 </div>
-              )}
+              </form>
+
+              {/* Aide / compteur */}
+              <div className="mt-3">
+                {searchHint ? (
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{searchHint}</p>
+                ) : searchLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div
+                      className={`animate-spin rounded-full h-5 w-5 border-b-2 mr-2 ${
+                        isDark ? 'border-blue-400' : 'border-blue-600'
+                      }`}
+                    />
+                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {state.settings.language === 'fr' ? 'Recherche en cours...' : 'Searching...'}
+                    </p>
+                  </div>
+                ) : showGlobalSearch ? (
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {globalSearchResults.length > 0
+                      ? state.settings.language === 'fr'
+                        ? `${globalSearchResults.length} verset${globalSearchResults.length > 1 ? 's' : ''} trouvé${globalSearchResults.length > 1 ? 's' : ''} dans toute la Bible`
+                        : `${globalSearchResults.length} verse${globalSearchResults.length > 1 ? 's' : ''} found in the entire Bible`
+                      : state.settings.language === 'fr'
+                        ? 'Aucun verset trouvé dans la Bible'
+                        : 'No verses found in the Bible'}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          {/* Résultats de recherche globale */}
+          {/* Résultats de recherche */}
           {showGlobalSearch && globalSearchResults.length > 0 && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
@@ -258,7 +310,7 @@ export default function Reading() {
               </h2>
 
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {globalSearchResults.map((verse) => (
+                {globalSearchResults.map((verse: any) => (
                   <div
                     key={`${verse.book}-${verse.chapter}-${verse.verse}`}
                     onClick={() => handleVerseClick(verse.book, verse.chapter)}
@@ -280,14 +332,13 @@ export default function Reading() {
                       className={`${isDark ? 'text-gray-200' : 'text-gray-700'} leading-relaxed`}
                       style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
                       dangerouslySetInnerHTML={{
-                        __html: highlightText(verse.text, globalSearchTerm)
+                        __html: highlightText(verse.text, globalSearchTerm),
                       }}
                     />
                   </div>
                 ))}
               </div>
 
-              {/* Fermer les résultats */}
               <div className="mt-4 text-center">
                 <button
                   onClick={clearGlobalSearch}
@@ -303,8 +354,8 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Aucun résultat */}
-          {showGlobalSearch && globalSearchResults.length === 0 && !searchLoading && (
+          {/* Aucun résultat (après recherche) */}
+          {showGlobalSearch && globalSearchResults.length === 0 && !searchLoading && !searchHint && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-8 mb-6 text-center`}>
               <Search size={48} className={`mx-auto mb-4 opacity-50 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
@@ -313,8 +364,7 @@ export default function Reading() {
               <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
                 {state.settings.language === 'fr'
                   ? `Aucun verset trouvé pour "${globalSearchTerm}" dans la Bible`
-                  : `No verses found for "${globalSearchTerm}" in the Bible`
-                }
+                  : `No verses found for "${globalSearchTerm}" in the Bible`}
               </p>
               <button
                 onClick={clearGlobalSearch}
@@ -425,7 +475,9 @@ export default function Reading() {
                           <select
                             value={selectedChapter}
                             onChange={(e) => handleChapterSelect(Number(e.target.value))}
-                            className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                            className={`appearance-none ${
+                              isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                            } border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
                           >
                             {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => (
                               <option key={num} value={num}>
@@ -433,7 +485,12 @@ export default function Reading() {
                               </option>
                             ))}
                           </select>
-                          <ChevronDown size={16} className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'} pointer-events-none`} />
+                          <ChevronDown
+                            size={16}
+                            className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${
+                              isDark ? 'text-gray-400' : 'text-gray-600'
+                            } pointer-events-none`}
+                          />
                         </div>
 
                         <button
@@ -459,25 +516,22 @@ export default function Reading() {
 
               {/* Contenu du chapitre */}
               <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 min-h-96`}>
-                {/* Notification de restauration */}
+                {/* Notification reprise de lecture */}
                 {showRestoredNotification && (
-                  <div className={`mb-4 p-3 rounded-lg border-l-4 ${
-                    isDark
-                      ? 'bg-blue-900 border-blue-500 text-blue-200'
-                      : 'bg-blue-50 border-blue-500 text-blue-700'
-                  }`}>
+                  <div
+                    className={`mb-4 p-3 rounded-lg border-l-4 ${
+                      isDark ? 'bg-blue-900 border-blue-500 text-blue-200' : 'bg-blue-50 border-blue-500 text-blue-700'
+                    }`}
+                  >
                     <p className="text-sm flex items-center">
                       <BookOpen size={16} className="mr-2" />
                       {state.settings.language === 'fr'
                         ? 'Vous avez repris votre lecture là où vous vous étiez arrêté'
-                        : 'You resumed reading where you left off'
-                      }
+                        : 'You resumed reading where you left off'}
                       <button
                         onClick={() => setShowRestoredNotification(false)}
                         className={`ml-auto text-xs px-2 py-1 rounded ${
-                          isDark
-                            ? 'hover:bg-blue-800 text-blue-300'
-                            : 'hover:bg-blue-100 text-blue-600'
+                          isDark ? 'hover:bg-blue-800 text-blue-300' : 'hover:bg-blue-100 text-blue-600'
                         }`}
                       >
                         ✕
@@ -488,10 +542,12 @@ export default function Reading() {
 
                 {loading ? (
                   <div className="flex items-center justify-center py-16">
-                    <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`}></div>
-                    <span className={`ml-4 text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {t('loading')}
-                    </span>
+                    <div
+                      className={`animate-spin rounded-full h-12 w-12 border-b-2 ${
+                        isDark ? 'border-blue-400' : 'border-blue-600'
+                      }`}
+                    />
+                    <span className={`ml-4 text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{t('loading')}</span>
                   </div>
                 ) : chapter ? (
                   <div>
@@ -501,7 +557,11 @@ export default function Reading() {
                     <div className="space-y-4">
                       {chapter.verses.map((verse) => (
                         <div key={verse.verse} className="flex">
-                          <span className={`inline-block w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0`}>
+                          <span
+                            className={`inline-block w-8 text-sm font-medium ${
+                              isDark ? 'text-gray-400' : 'text-gray-500'
+                            } flex-shrink-0`}
+                          >
                             {verse.verse}
                           </span>
                           <div
@@ -517,7 +577,10 @@ export default function Reading() {
                 ) : selectedBook ? (
                   <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     <p className="text-lg mb-2">{t('selectChapter')}</p>
-                    <p className="text-sm">{getBookName(selectedBook)} - {selectedBook.chapters} {t('chapter')}{selectedBook.chapters > 1 ? 's' : ''}</p>
+                    <p className="text-sm">
+                      {getBookName(selectedBook)} - {selectedBook.chapters} {t('chapter')}
+                      {selectedBook.chapters > 1 ? 's' : ''}
+                    </p>
                   </div>
                 ) : (
                   <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
