@@ -191,7 +191,12 @@ export default function Reading() {
         fetchChapter(book, state.readingContext!.chapter);
         setShowRestoredNotification(false);
         setSelectedVerses([]);
-        setHighlightedVerse(null);
+        // Si on a un numéro de verset, le mettre en surbrillance
+        if (state.readingContext.verse) {
+          setHighlightedVerse(state.readingContext.verse);
+        } else {
+          setHighlightedVerse(null);
+        }
         setHasLoadedContext(true);
         // Réinitialiser le contexte après l'avoir utilisé
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
