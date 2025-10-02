@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { getRandomVerse, copyToClipboard } from '../services/bibleService';
+import { getRandomVerse, copyToClipboard, prefetchVerseCounts } from '../services/bibleService';
 import { BibleVerse } from '../types/bible';
 import { RefreshCw, Copy, Check } from 'lucide-react';
 
@@ -28,6 +28,7 @@ export default function Home() {
 
   const handleVerseClick = () => {
     if (verse) {
+      // on passe aussi le numéro de verset pour surligner côté lecture
       navigateToVerse(verse.book, verse.chapter, verse.verse);
     }
   };
@@ -44,7 +45,27 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchRandomVerse();
+    let cancelled = false;
+
+    (async () => {
+      // Précharge la table des nombres de versets (rend le tirage plus réactif ensuite)
+      prefetchVerseCounts(state.settings.language).catch(() => { /* noop */ });
+
+      try {
+        const v = await getRandomVerse(state.settings.language);
+        if (!cancelled) {
+          setVerse(v);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [state.settings.language]);
 
   return (
@@ -66,21 +87,21 @@ export default function Home() {
 
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`}></div>
+                <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
                 <span className={`ml-4 text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {t('loading')}
                 </span>
               </div>
             ) : verse ? (
               <div className="text-center">
-                <blockquote 
+                <blockquote
                   onClick={handleVerseClick}
                   className={`text-lg md:text-xl leading-relaxed mb-8 italic cursor-pointer transition-all duration-200 hover:scale-105 ${isDark ? 'text-gray-200 hover:text-blue-300' : 'text-gray-700 hover:text-blue-600'}`}
                   style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.8' }}
                 >
                   "{verse.text}"
                 </blockquote>
-                <cite 
+                <cite
                   onClick={handleVerseClick}
                   className={`text-base font-medium cursor-pointer transition-all duration-200 hover:underline ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                 >
@@ -137,3 +158,4 @@ export default function Home() {
     </div>
   );
 }
+
