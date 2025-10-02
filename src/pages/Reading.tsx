@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { getBibleBooks, getChapter, searchInBible, copyToClipboard } from '../services/bibleService';
@@ -19,6 +19,10 @@ import { highlightText } from '../utils/searchUtils';
 export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
+
+  const NAV_H = 64; // hauteur de la nav (h-16)
+  const searchRef = useRef<HTMLDivElement>(null);
+  const [searchH, setSearchH] = useState(0);
 
   const [books] = useState<BibleBook[]>(getBibleBooks());
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
@@ -179,6 +183,14 @@ export default function Reading() {
     return null;
   };
 
+  // Mesurer la hauteur de la barre de recherche pour positionner la barre de commandes
+  useEffect(() => {
+    const compute = () => setSearchH(searchRef.current?.offsetHeight || 0);
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, []);
+
   // Navigation contextuelle - s'exécute une seule fois au montage
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
@@ -325,16 +337,12 @@ export default function Reading() {
     }
   };
 
-  // Valeur du "top" pour les barres sticky sous la nav
-  const searchBarTop = 'top-16 sm:top-16';
-  const commandBarTop = 'top-32 sm:top-32';
-
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200 overflow-x-hidden`}>
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-6xl mx-auto">
           {/* BARRE RECHERCHE — sticky sous la nav */}
-          <div className={`sticky ${searchBarTop} z-30 mb-2 mb:mb-4`}>
+          <div ref={searchRef} className="sticky top-16 z-40 mb-2">
             <div className={`${isDark ? 'bg-gray-900/80' : 'bg-gray-50/80'} backdrop-blur rounded-xl p-3 shadow-sm`}>
               <form onSubmit={handleSubmitSearch}>
                 <div className="relative">
@@ -516,7 +524,10 @@ export default function Reading() {
           <div className="grid grid-cols-1 gap-6">
             {/* Bandeau commandes (Livres + chapitre) — sticky */}
             {selectedBook && (
-              <div className={`sticky ${commandBarTop} z-20 ${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-xl shadow-lg p-6`}>
+              <div
+                className={`sticky z-30 ${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-xl shadow-lg p-6`}
+                style={{ top: `${NAV_H + searchH}px` }}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
                     {getBookName(selectedBook)}
@@ -752,6 +763,9 @@ export default function Reading() {
   );
 }
 
+
+
+export default Reading
 
 
 
