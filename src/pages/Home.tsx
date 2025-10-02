@@ -28,7 +28,7 @@ export default function Home() {
 
   const handleVerseClick = () => {
     if (verse) {
-      navigateToVerse(verse.book, verse.chapter);
+      navigateToVerse(verse.book, verse.chapter, verse.verse);
     }
   };
 
