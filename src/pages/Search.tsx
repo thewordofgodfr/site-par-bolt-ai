@@ -89,8 +89,8 @@ export default function Search() {
   // Suggestions par défaut (simples exemples)
   const examples =
     state.settings.language === 'fr'
-      ? ['amour', 'foi', 'grâce', 'Jésus', 'esprit', 'paix']
-      : ['love', 'faith', 'grace', 'Jesus', 'spirit', 'peace'];
+      ? ['amour', 'foi', 'grâce', 'Jésus', 'esprit']
+      : ['love', 'faith', 'grace', 'Jesus', 'spirit'];
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
@@ -111,7 +111,7 @@ export default function Search() {
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={
                       state.settings.language === 'fr'
-                        ? 'Rechercher un mot ou une phrase…'
+                        ? 'Taper un mot ou une phrase…'
                         : 'Search a word or phrase…'
                     }
                     className={`w-full pl-9 sm:pl-11 pr-20 sm:pr-24 py-2 sm:py-2.5 rounded-md sm:rounded-lg border transition-all duration-200 text-sm sm:text-base ${
