@@ -162,7 +162,7 @@ export default function Reading() {
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
-  // Navigation contextuelle
+  // Navigation contextuelle - priorité absolue sur le chargement initial
   useEffect(() => {
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = books.find(b => b.name === state.readingContext!.book);
@@ -173,13 +173,9 @@ export default function Reading() {
         setShowRestoredNotification(false);
         setSelectedVerses([]);
         setHighlightedVerse(null);
-        // Ne pas réinitialiser immédiatement pour permettre la navigation
-        setTimeout(() => {
-          dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
-        }, 100);
       }
     }
-  }, [state.readingContext, books, dispatch]);
+  }, [state.readingContext, books]);
 
   // Quand la langue change
   useEffect(() => {
@@ -205,9 +201,14 @@ export default function Reading() {
     }
   }, [state.settings.language]);
 
-  // Chargement initial
+  // Chargement initial - uniquement si pas de contexte de navigation
   useEffect(() => {
-    if (!selectedBook && !state.readingContext) {
+    // Ignorer si on a un contexte de navigation actif
+    if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
+      return;
+    }
+
+    if (!selectedBook) {
       const lastPosition = state.settings.lastReadingPosition;
       if (lastPosition?.timestamp) {
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -719,3 +720,5 @@ export default function Reading() {
     </div>
   );
 }
+
+
