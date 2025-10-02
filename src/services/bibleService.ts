@@ -24,6 +24,23 @@ interface VerseCounts {
 const bibleCache: Map<string, BibleBook_JSON> = new Map();
 const verseCountsCache: Map<string, VerseCounts> = new Map();
 
+/** RNG uniforme et de bonne qualité (navigateur) */
+function randomIntSecure(maxExclusive: number): number {
+  if (maxExclusive <= 0) return 0;
+  // Rejection sampling pour éviter le biais du modulo
+  const maxUint = 0xFFFFFFFF; // 2^32 - 1
+  const bucketSize = Math.floor((maxUint + 1) / maxExclusive);
+  const limit = bucketSize * maxExclusive - 1;
+
+  const arr = new Uint32Array(1);
+  let r = 0;
+  do {
+    crypto.getRandomValues(arr);
+    r = arr[0];
+  } while (r > limit);
+  return r % maxExclusive;
+}
+
 function generateFileNameVariants(bookName: string, language: Language): string[] {
   const book = bibleBooks.find(b => b.name === bookName);
   if (!book) return [bookName];
@@ -70,7 +87,8 @@ async function tryLoadBookFile(bookName: string, language: Language): Promise<Bi
 
   for (const variant of variants) {
     try {
-      const response = await fetch(`/data/bible/${language}/${variant}.json`);
+      const url = `/data/bible/${language}/${encodeURIComponent(variant)}.json`;
+      const response = await fetch(url);
       if (response.ok) {
         const bookData: BibleBook_JSON = await response.json();
         return bookData;
@@ -103,6 +121,11 @@ function getBookReference(bookName: string, language: Language): string {
   const book = bibleBooks.find(b => b.name === bookName);
   if (!book) return bookName;
   return language === 'fr' ? book.nameFr : book.nameEn;
+}
+
+/** Permet de précharger les verse-counts (accélère le verset aléatoire) */
+export async function prefetchVerseCounts(language: Language): Promise<void> {
+  await loadVerseCounts(language);
 }
 
 async function loadVerseCounts(language: Language): Promise<VerseCounts> {
@@ -150,13 +173,16 @@ export async function getRandomVerse(language: Language): Promise<BibleVerse> {
       throw new Error('No verse counts loaded');
     }
 
+    // Total exact (ex. ~31 000+ selon la traduction)
     let totalVerses = 0;
     for (const chapters of Object.values(verseCounts)) {
       totalVerses += chapters.reduce((sum, count) => sum + count, 0);
     }
 
-    const randomIndex = Math.floor(Math.random() * totalVerses);
+    // Tirage uniforme [0, totalVerses)
+    const randomIndex = randomIntSecure(totalVerses);
 
+    // Trouver le verset correspondant
     let currentIndex = 0;
     for (const [bookName, chapters] of Object.entries(verseCounts)) {
       for (let chapterIndex = 0; chapterIndex < chapters.length; chapterIndex++) {
@@ -187,7 +213,7 @@ export async function getRandomVerse(language: Language): Promise<BibleVerse> {
             chapter: chapterNumber,
             verse: verseInChapter,
             text: verse.Text,
-            reference: `${bookReference} ${chapterNumber}:${verseInChapter}`
+            reference: `${bookReference} ${chapterNumber}:${verseInChapter}`,
           };
         }
 
@@ -198,14 +224,16 @@ export async function getRandomVerse(language: Language): Promise<BibleVerse> {
     throw new Error('Random verse calculation failed');
   } catch (error) {
     console.error('Error fetching random verse:', error);
+    // Fallback robuste
     return {
       book: 'John',
       chapter: 3,
       verse: 16,
-      text: language === 'fr'
-        ? 'Car Dieu a tant aimé le monde qu\'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu\'il ait la vie éternelle.'
-        : 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',
-      reference: language === 'fr' ? 'Jean 3:16' : 'John 3:16'
+      text:
+        language === 'fr'
+          ? "Car Dieu a tant aimé le monde qu'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu'il ait la vie éternelle."
+          : 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',
+      reference: language === 'fr' ? 'Jean 3:16' : 'John 3:16',
     };
   }
 }
@@ -227,22 +255,24 @@ export async function getChapter(book: string, chapter: number, language: Langua
       chapter,
       verse: verseData.ID,
       text: verseData.Text,
-      reference: `${getBookReference(book, language)} ${chapter}:${verseData.ID}`
+      reference: `${getBookReference(book, language)} ${chapter}:${verseData.ID}`,
     }));
 
     return { book, chapter, verses };
   } catch (error) {
     console.error(`Error loading chapter ${book} ${chapter} in ${language}:`, error);
+    // Affichage explicite en cas d’erreur de fichier
     const verses: BibleVerse[] = [];
     for (let i = 1; i <= 10; i++) {
       verses.push({
         book,
         chapter,
         verse: i,
-        text: language === 'fr'
-          ? `❌ Erreur: Fichier manquant pour ${book}`
-          : `❌ Error: Missing file for ${book}`,
-        reference: `${getBookReference(book, language)} ${chapter}:${i}`
+        text:
+          language === 'fr'
+            ? `❌ Erreur: Fichier manquant pour ${book}`
+            : `❌ Error: Missing file for ${book}`,
+        reference: `${getBookReference(book, language)} ${chapter}:${i}`,
       });
     }
     return { book, chapter, verses };
@@ -280,7 +310,7 @@ export async function searchInBible(searchTerm: string, language: Language): Pro
                 chapter: chapterData.Number,
                 verse: verseData.ID,
                 text: verseData.Text,
-                reference: `${bookReference} ${chapterData.Number}:${verseData.ID}`
+                reference: `${bookReference} ${chapterData.Number}:${verseData.ID}`,
               });
             }
           }
@@ -294,3 +324,4 @@ export async function searchInBible(searchTerm: string, language: Language): Pro
     return [];
   }
 }
+
