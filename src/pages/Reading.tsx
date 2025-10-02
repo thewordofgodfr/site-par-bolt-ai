@@ -164,13 +164,19 @@ export default function Reading() {
 
   // Navigation contextuelle
   useEffect(() => {
-    if (state.readingContext) {
+    if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = books.find(b => b.name === state.readingContext!.book);
       if (book) {
         setSelectedBook(book);
         setSelectedChapter(state.readingContext!.chapter);
         fetchChapter(book, state.readingContext!.chapter);
-        dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
+        setShowRestoredNotification(false);
+        setSelectedVerses([]);
+        setHighlightedVerse(null);
+        // Ne pas réinitialiser immédiatement pour permettre la navigation
+        setTimeout(() => {
+          dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
+        }, 100);
       }
     }
   }, [state.readingContext, books, dispatch]);
@@ -713,4 +719,3 @@ export default function Reading() {
     </div>
   );
 }
-
