@@ -1,23 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { getBibleBooks, searchInBible, copyToClipboard } from '../services/bibleService';
+import { getBibleBooks, searchInBible } from '../services/bibleService';
 import type { BibleVerse } from '../types/bible';
 import {
-  BookOpen,
-  Check,
-  Copy as CopyIcon,
+  ChevronDown,
+  ChevronRight,
   Loader2,
   Search as SearchIcon,
   X,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 import { highlightText } from '../utils/searchUtils';
 
 type Grouped = {
   bookId: string;               // id interne (ex: "Genesis")
-  displayName: string;          // nom selon la langue (ex: "Genèse")
+  displayName: string;          // nom selon langue (ex: "Genèse")
   verses: BibleVerse[];
 };
 
@@ -26,10 +23,25 @@ export default function Search() {
   const { t } = useTranslation();
   const isDark = state.settings.theme === 'dark';
 
-  const [query, setQuery] = useState('');
+  // --- Persistance de la requête par langue ---
+  const QUERY_KEY = `twog:search:lastQuery:${state.settings.language}`;
+  const [query, setQuery] = useState<string>('');
+  useEffect(() => {
+    const saved = sessionStorage.getItem(QUERY_KEY);
+    if (saved) setQuery(saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.settings.language]);
+  useEffect(() => {
+    sessionStorage.setItem(QUERY_KEY, query);
+  }, [query, QUERY_KEY]);
+
+  // Fabrique une clé d’état des groupes spécifique langue+requête
+  const expandedKey = (q: string) =>
+    `twog:search:expanded:${state.settings.language}:${q.trim().toLowerCase()}`;
+
+  // --- Résultats & état ---
   const [results, setResults] = useState<BibleVerse[]>([]);
   const [loading, setLoading] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string>('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // par livre
 
   const books = useMemo(() => getBibleBooks(), []);
@@ -61,7 +73,7 @@ export default function Search() {
       } finally {
         setLoading(false);
       }
-    }, 350);
+    }, 300);
     return () => clearTimeout(handle);
   }, [query, state.settings.language]);
 
@@ -75,32 +87,61 @@ export default function Search() {
     const arr: Grouped[] = Array.from(map.entries()).map(([bookId, verses]) => ({
       bookId,
       displayName: getBookName(bookId),
-      verses: verses.sort((a, b) => a.chapter === b.chapter ? a.verse - b.verse : a.chapter - b.chapter),
+      verses: verses.sort((a, b) => (a.chapter === b.chapter ? a.verse - b.verse : a.chapter - b.chapter)),
     }));
-    // Tri selon l'ordre biblique
+    // Tri selon l’ordre biblique
     arr.sort((a, b) => bibleOrder(a.bookId) - bibleOrder(b.bookId));
     return arr;
   }, [results, state.settings.language, books]);
 
-  // Définir l'état d'ouverture par défaut quand les résultats changent
+  // Restaure l’état des groupes (si présent), sinon règle un défaut
   useEffect(() => {
-    // Par défaut : si peu de groupes (<= 2), tout ouvert ; sinon tout fermé
-    const open = grouped.length <= 2;
-    const next: Record<string, boolean> = {};
-    for (const g of grouped) next[g.bookId] = open;
-    setExpanded(next);
-  }, [grouped]);
+    if (!grouped.length) {
+      setExpanded({});
+      return;
+    }
 
-  const toggleGroup = (bookId: string) => {
+    let restored: Record<string, boolean> | null = null;
+    try {
+      const raw = sessionStorage.getItem(expandedKey(query));
+      if (raw) restored = JSON.parse(raw);
+    } catch {
+      restored = null;
+    }
+
+    if (restored && Object.keys(restored).length) {
+      // Filtre aux groupes existants
+      const next: Record<string, boolean> = {};
+      for (const g of grouped) next[g.bookId] = !!restored![g.bookId];
+      setExpanded(next);
+    } else {
+      // Défaut : tout ouvrir si peu de groupes, sinon tout fermer
+      const open = grouped.length <= 2;
+      const next: Record<string, boolean> = {};
+      for (const g of grouped) next[g.bookId] = open;
+      setExpanded(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grouped, query, state.settings.language]);
+
+  // Sauvegarde l’état des groupes à chaque modification
+  useEffect(() => {
+    if (!grouped.length) return;
+    try {
+      sessionStorage.setItem(expandedKey(query), JSON.stringify(expanded));
+    } catch {
+      /* ignore */
+    }
+  }, [expanded, grouped, query, state.settings.language]);
+
+  const toggleGroup = (bookId: string) =>
     setExpanded(prev => ({ ...prev, [bookId]: !prev[bookId] }));
-  };
 
   const expandAll = () => {
     const next: Record<string, boolean> = {};
     for (const g of grouped) next[g.bookId] = true;
     setExpanded(next);
   };
-
   const collapseAll = () => {
     const next: Record<string, boolean> = {};
     for (const g of grouped) next[g.bookId] = false;
@@ -116,21 +157,12 @@ export default function Search() {
     navigateToVerse(v.book, v.chapter, v.verse);
   };
 
-  const copyVerse = async (v: BibleVerse) => {
-    const ok = await copyToClipboard(`${v.reference}\n${v.text}`);
-    if (ok) {
-      const key = `${v.book}-${v.chapter}-${v.verse}`;
-      setCopiedKey(key);
-      setTimeout(() => setCopiedKey(''), 1200);
-    }
-  };
-
   const total = results.length;
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
       <div className="max-w-4xl mx-auto px-4 py-5">
-        {/* Barre de recherche (indépendante de Lecture) */}
+        {/* Barre de recherche */}
         <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-3 sticky top-20 sm:top-16 z-30`}>
           <form onSubmit={e => e.preventDefault()} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -142,8 +174,8 @@ export default function Search() {
               type="text"
               placeholder={
                 state.settings.language === 'fr'
-                  ? 'Tapez votre recherche'
-                  : 'Type your search'
+                  ? 'Tapez votre recherche (min. 2 caractères)'
+                  : 'Type your search (min. 2 chars)'
               }
               className={`w-full pl-10 pr-20 py-3 rounded-lg border-2 focus:outline-none transition ${
                 isDark
@@ -202,6 +234,14 @@ export default function Search() {
               </div>
             )}
           </div>
+
+          {total > 0 && !loading && (
+            <div className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {state.settings.language === 'fr'
+                ? 'Astuce : touchez un verset pour l’ouvrir dans Lecture.'
+                : 'Tip: tap a verse to open it in Reading.'}
+            </div>
+          )}
         </div>
 
         {/* Groupes par livre */}
@@ -245,11 +285,15 @@ export default function Search() {
                   <div className="px-4 pb-3 space-y-3">
                     {group.verses.map(v => {
                       const key = `${v.book}-${v.chapter}-${v.verse}`;
-                      const copied = copiedKey === key;
                       return (
                         <div
                           key={key}
-                          className={`${isDark ? 'bg-gray-750/50' : 'bg-gray-50'} rounded-md p-3 border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openInReading(v)}
+                          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openInReading(v)}
+                          className={`${isDark ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'} cursor-pointer rounded-md p-3 border ${isDark ? 'border-gray-700' : 'border-gray-200'} transition`}
+                          title={state.settings.language === 'fr' ? 'Ouvrir dans Lecture' : 'Open in Reading'}
                         >
                           <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} font-medium mb-1`}>
                             {getBookName(v.book)} {v.chapter}:{v.verse}
@@ -259,22 +303,6 @@ export default function Search() {
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
                             dangerouslySetInnerHTML={{ __html: highlightText(v.text, query) }}
                           />
-                          <div className="mt-2 flex justify-end space-x-2">
-                            <button
-                              onClick={() => copyVerse(v)}
-                              className={`${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} px-3 py-1.5 rounded text-sm inline-flex items-center`}
-                            >
-                              {copied ? <Check size={16} className="mr-1" /> : <CopyIcon size={16} className="mr-1" />}
-                              {copied ? (state.settings.language === 'fr' ? 'Copié' : 'Copied') : (state.settings.language === 'fr' ? 'Copier' : 'Copy')}
-                            </button>
-                            <button
-                              onClick={() => openInReading(v)}
-                              className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-sm inline-flex items-center"
-                            >
-                              <BookOpen size={16} className="mr-1" />
-                              {state.settings.language === 'fr' ? 'Ouvrir' : 'Open'}
-                            </button>
-                          </div>
                         </div>
                       );
                     })}
