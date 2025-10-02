@@ -25,7 +25,7 @@ export default function Navigation() {
     <nav
       className={[
         // Collant en haut partout
-        'sticky top-0 z-50',
+        'sticky top-0 z-40', // <- était z-50 : on met z-40 pour que l’overlay Livres (z-50) passe au-dessus
         // Fond + flou pour lisibilité quand on scroll
         isDark ? 'bg-gray-800/95' : 'bg-white/95',
         'backdrop-blur',
@@ -145,3 +145,4 @@ export default function Navigation() {
     </nav>
   );
 }
+
