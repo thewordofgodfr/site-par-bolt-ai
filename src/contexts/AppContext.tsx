@@ -4,7 +4,7 @@ import { AppSettings, Language, Theme } from '../types/bible';
 interface AppState {
   settings: AppSettings;
   currentPage: string;
-  readingContext?: { book: string; chapter: number };
+  readingContext?: { book: string; chapter: number; verse?: number };
 }
 
 type AppAction =
@@ -13,14 +13,14 @@ type AppAction =
   | { type: 'SET_LANGUAGE'; payload: Language }
   | { type: 'SET_PAGE'; payload: string }
   | { type: 'LOAD_SETTINGS'; payload: AppSettings }
-  | { type: 'SET_READING_CONTEXT'; payload: { book: string; chapter: number } }
+  | { type: 'SET_READING_CONTEXT'; payload: { book: string; chapter: number; verse?: number } }
   | { type: 'SAVE_READING_POSITION'; payload: { book: string; chapter: number } };
 
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   updateSettings: (settings: Partial<AppSettings>) => void;
-  navigateToVerse: (book: string, chapter: number) => void;
+  navigateToVerse: (book: string, chapter: number, verse?: number) => void;
   saveReadingPosition: (book: string, chapter: number) => void;
 }
 
@@ -123,8 +123,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const navigateToVerse = (book: string, chapter: number) => {
-    dispatch({ type: 'SET_READING_CONTEXT', payload: { book, chapter } });
+  const navigateToVerse = (book: string, chapter: number, verse?: number) => {
+    dispatch({ type: 'SET_READING_CONTEXT', payload: { book, chapter, verse } });
     dispatch({ type: 'SET_PAGE', payload: 'reading' });
   };
 
