@@ -325,15 +325,16 @@ export default function Reading() {
     }
   };
 
-  // Valeur du “top” pour la barre sticky sous la nav (adapte si besoin)
-  const stickyTop = 'top-28 sm:top-24';
+  // Valeur du "top" pour les barres sticky sous la nav
+  const searchBarTop = 'top-16 sm:top-16';
+  const commandBarTop = 'top-32 sm:top-32';
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200 overflow-x-hidden`}>
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-6xl mx-auto">
           {/* BARRE RECHERCHE — sticky sous la nav */}
-          <div className={`sticky ${stickyTop} z-30 mb-2 mb:mb-4`}>
+          <div className={`sticky ${searchBarTop} z-30 mb-2 mb:mb-4`}>
             <div className={`${isDark ? 'bg-gray-900/80' : 'bg-gray-50/80'} backdrop-blur rounded-xl p-3 shadow-sm`}>
               <form onSubmit={handleSubmitSearch}>
                 <div className="relative">
@@ -513,9 +514,9 @@ export default function Reading() {
 
           {/* Zone commandes + contenu */}
           <div className="grid grid-cols-1 gap-6">
-            {/* Bandeau commandes (Livres + chapitre) */}
+            {/* Bandeau commandes (Livres + chapitre) — sticky */}
             {selectedBook && (
-              <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
+              <div className={`sticky ${commandBarTop} z-20 ${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-xl shadow-lg p-6`}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
                     {getBookName(selectedBook)}
@@ -750,6 +751,7 @@ export default function Reading() {
     </div>
   );
 }
+
 
 
 
