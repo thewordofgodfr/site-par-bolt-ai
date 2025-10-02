@@ -63,7 +63,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
         settings: { ...state.settings, language: action.payload },
       };
     case 'SET_PAGE':
-      return { ...state, currentPage: action.payload };
+      // Réinitialiser le contexte de lecture sauf si on va vers 'reading'
+      return {
+        ...state,
+        currentPage: action.payload,
+        readingContext: action.payload === 'reading' ? state.readingContext : undefined
+      };
     case 'LOAD_SETTINGS':
       return { ...state, settings: action.payload };
     case 'SET_READING_CONTEXT':
