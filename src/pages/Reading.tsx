@@ -173,9 +173,11 @@ export default function Reading() {
         setShowRestoredNotification(false);
         setSelectedVerses([]);
         setHighlightedVerse(null);
+        // Réinitialiser après utilisation
+        dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       }
     }
-  }, [state.readingContext, books]);
+  }, [state.readingContext, books, dispatch]);
 
   // Quand la langue change
   useEffect(() => {
@@ -720,5 +722,4 @@ export default function Reading() {
     </div>
   );
 }
-
 
