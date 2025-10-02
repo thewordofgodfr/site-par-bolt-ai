@@ -142,8 +142,8 @@ export default function Search() {
               type="text"
               placeholder={
                 state.settings.language === 'fr'
-                  ? 'Tapez votre recherche (min. 2 caractères)'
-                  : 'Type your search (min. 2 chars)'
+                  ? 'Tapez votre recherche'
+                  : 'Type your search'
               }
               className={`w-full pl-10 pr-20 py-3 rounded-lg border-2 focus:outline-none transition ${
                 isDark
