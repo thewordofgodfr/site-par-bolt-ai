@@ -1,31 +1,38 @@
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { Home, BookOpen, Settings, Info, Globe } from 'lucide-react';
+import { Home, BookOpen, Settings, Info, Globe, Search } from 'lucide-react';
 
 export default function Navigation() {
   const { state, dispatch, updateSettings } = useApp();
   const { t } = useTranslation();
 
+  const isDark = state.settings.theme === 'dark';
+  const label = (fr: string, en: string) =>
+    state.settings.language === 'fr' ? fr : en;
+
+  // Ordre voulu : Accueil, Recherche (loupe), Lecture, ...
   const navItems = [
-    { id: 'home', icon: Home, label: t('home') },
-    { id: 'reading', icon: BookOpen, label: t('reading') },
-    { id: 'settings', icon: Settings, label: t('settings') },
-    { id: 'about', icon: Info, label: t('about') },
-  ];
+    { id: 'home', icon: Home, label: t('home') || label('Accueil', 'Home') },
+    { id: 'search', icon: Search, label: t('search') || label('Recherche', 'Search') },
+    { id: 'reading', icon: BookOpen, label: t('reading') || label('Lecture', 'Reading') },
+    { id: 'settings', icon: Settings, label: t('settings') || label('Paramètres', 'Settings') },
+    { id: 'about', icon: Info, label: t('about') || label('À propos', 'About') },
+  ] as const;
 
   const toggleLanguage = () => {
     const newLanguage = state.settings.language === 'fr' ? 'en' : 'fr';
     updateSettings({ language: newLanguage });
   };
 
-  const isDark = state.settings.theme === 'dark';
+  const go = (page: string) =>
+    dispatch({ type: 'SET_PAGE', payload: page as any });
 
   return (
     <nav
       className={[
         // Collant en haut partout
-        'sticky top-0 z-40', // <- était z-50 : on met z-40 pour que l’overlay Livres (z-50) passe au-dessus
+        'sticky top-0 z-40', // z-40 pour laisser passer les overlays (z-50) au-dessus
         // Fond + flou pour lisibilité quand on scroll
         isDark ? 'bg-gray-800/95' : 'bg-white/95',
         'backdrop-blur',
@@ -40,10 +47,10 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo cliquable (ramène à Accueil) */}
           <button
-            onClick={() => dispatch({ type: 'SET_PAGE', payload: 'home' })}
+            onClick={() => go('home')}
             className="flex items-center space-x-2 focus:outline-none"
-            aria-label="Accueil"
-            title="Accueil"
+            aria-label={label('Accueil', 'Home')}
+            title={label('Accueil', 'Home')}
           >
             <BookOpen className={`w-8 h-8 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
             <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -58,7 +65,7 @@ export default function Navigation() {
               return (
                 <button
                   key={id}
-                  onClick={() => dispatch({ type: 'SET_PAGE', payload: id })}
+                  onClick={() => go(id)}
                   aria-current={active ? 'page' : undefined}
                   className={[
                     'flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200',
@@ -87,8 +94,8 @@ export default function Navigation() {
                   ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
               ].join(' ')}
-              aria-label="Changer la langue"
-              title="Changer la langue"
+              aria-label={label('Changer la langue', 'Change language')}
+              title={label('Changer la langue', 'Change language')}
             >
               <Globe size={20} />
               <span>{state.settings.language.toUpperCase()}</span>
@@ -104,8 +111,8 @@ export default function Navigation() {
                 ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
             ].join(' ')}
-            aria-label="Changer la langue"
-            title="Changer la langue"
+            aria-label={label('Changer la langue', 'Change language')}
+            title={label('Changer la langue', 'Change language')}
           >
             <Globe size={20} />
             <span>{state.settings.language.toUpperCase()}</span>
@@ -120,7 +127,7 @@ export default function Navigation() {
               return (
                 <button
                   key={id}
-                  onClick={() => dispatch({ type: 'SET_PAGE', payload: id })}
+                  onClick={() => go(id)}
                   aria-current={active ? 'page' : undefined}
                   className={[
                     'flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all duration-200',
@@ -145,4 +152,3 @@ export default function Navigation() {
     </nav>
   );
 }
-
