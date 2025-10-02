@@ -338,11 +338,11 @@ export default function Reading() {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200 overflow-x-hidden`}>
-      <div className="container mx-auto px-4 py-6">
-        <div className="max-w-6xl mx-auto">
-          {/* BARRE RECHERCHE — sticky sous la nav */}
-          <div ref={searchRef} className="sticky top-16 z-40 mb-2">
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
+      {/* BARRE RECHERCHE — sticky sous la nav */}
+      <div ref={searchRef} className="sticky top-16 z-40 bg-transparent py-2">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
             <div className={`${isDark ? 'bg-gray-900/80' : 'bg-gray-50/80'} backdrop-blur rounded-xl p-3 shadow-sm`}>
               <form onSubmit={handleSubmitSearch}>
                 <div className="relative">
@@ -420,9 +420,12 @@ export default function Reading() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div aria-hidden className="h-4 md:h-8 lg:h-10" />
-
+      {/* Contenu principal */}
+      <div className="container mx-auto px-4 pb-6">
+        <div className="max-w-6xl mx-auto">
           {/* Résultats de recherche */}
           {showGlobalSearch && globalSearchResults.length > 0 && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 mt-6 mb-6`}>
@@ -520,14 +523,10 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Zone commandes + contenu */}
-          <div className="grid grid-cols-1 gap-6">
-            {/* Bandeau commandes (Livres + chapitre) — sticky */}
-            {selectedBook && (
-              <div
-                className={`sticky z-30 ${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-xl shadow-lg p-6`}
-                style={{ top: `${NAV_H + searchH}px` }}
-              >
+          {/* Bandeau commandes (Livres + chapitre) — sticky */}
+          {selectedBook && (
+            <div className="sticky z-30 bg-transparent" style={{ top: `${NAV_H + searchH}px` }}>
+              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-xl shadow-lg p-6 mb-6`}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
                     {getBookName(selectedBook)}
@@ -586,29 +585,31 @@ export default function Reading() {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Barre d’action — desktop/tablette */}
-            {selectedVerses.length > 0 && (
-              <div className={`hidden sm:flex mb-1 rounded-lg p-3 items-center justify-between ${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow`}>
-                <div className="text-sm">
-                  {state.settings.language === 'fr'
-                    ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
-                    : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button onClick={copySelection} className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
-                    <CopyIcon size={16} className="mr-2" />
-                    {state.settings.language === 'fr' ? 'Copier la sélection' : 'Copy selection'}
-                  </button>
-                  <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}>
-                    {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
-                  </button>
-                </div>
+          {/* Barre d'action — desktop/tablette */}
+          {selectedVerses.length > 0 && (
+            <div className={`hidden sm:flex mb-4 rounded-lg p-3 items-center justify-between ${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow`}>
+              <div className="text-sm">
+                {state.settings.language === 'fr'
+                  ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
+                  : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
               </div>
-            )}
+              <div className="flex items-center space-x-2">
+                <button onClick={copySelection} className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
+                  <CopyIcon size={16} className="mr-2" />
+                  {state.settings.language === 'fr' ? 'Copier la sélection' : 'Copy selection'}
+                </button>
+                <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}>
+                  {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
+                </button>
+              </div>
+            </div>
+          )}
 
-            {/* Contenu du chapitre */}
+          {/* Contenu du chapitre */}
+          {selectedBook && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 min-h-96`}>
               {/* Notification reprise */}
               {showRestoredNotification && (
@@ -683,7 +684,7 @@ export default function Reading() {
                 </div>
               )}
             </div>
-          </div>
+          )}
 
           {/* Overlay Livres (désormais pour desktop ET mobile) */}
           {showBookPicker && (
@@ -762,6 +763,5 @@ export default function Reading() {
     </div>
   );
 }
-
 
 
