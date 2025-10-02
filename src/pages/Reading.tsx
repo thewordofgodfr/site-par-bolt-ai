@@ -136,14 +136,14 @@ export default function Reading() {
   };
 
   const handleResultClick = (book: string, chapterNum: number, verseNum: number) => {
-    const bookObj = books.find(b => b.name === book);
+    const bookObj = resolveBook(book);
     if (bookObj) {
       setSelectedBook(bookObj);
       setSelectedChapter(chapterNum);
       setHighlightedVerse(verseNum);
       fetchChapter(bookObj, chapterNum);
       setShowGlobalSearch(false);
-      saveReadingPosition(book, chapterNum);
+      saveReadingPosition(bookObj.name, chapterNum);
       setSelectedVerses([]);
     }
   };
@@ -162,12 +162,29 @@ export default function Reading() {
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
+  // Helper pour résoudre un nom de livre (FR/EN/ID interne)
+  const resolveBook = (bookIdentifier: string): BibleBook | null => {
+    // D'abord chercher par nom interne (identifiant anglais)
+    let found = books.find(b => b.name === bookIdentifier);
+    if (found) return found;
+
+    // Sinon chercher par nom anglais
+    found = books.find(b => b.nameEn === bookIdentifier);
+    if (found) return found;
+
+    // Sinon chercher par nom français
+    found = books.find(b => b.nameFr === bookIdentifier);
+    if (found) return found;
+
+    return null;
+  };
+
   // Navigation contextuelle - s'exécute une seule fois au montage
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
   useEffect(() => {
     if (!hasLoadedContext && state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
-      const book = books.find(b => b.name === state.readingContext!.book);
+      const book = resolveBook(state.readingContext.book);
       if (book) {
         setSelectedBook(book);
         setSelectedChapter(state.readingContext!.chapter);
@@ -177,6 +194,9 @@ export default function Reading() {
         setHighlightedVerse(null);
         setHasLoadedContext(true);
         // Réinitialiser le contexte après l'avoir utilisé
+        dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
+      } else {
+        // Livre non trouvé, nettoyer le contexte pour laisser le chargement par défaut
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       }
     }
@@ -218,7 +238,7 @@ export default function Reading() {
       if (lastPosition?.timestamp) {
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
         if (lastPosition.timestamp > thirtyDaysAgo) {
-          const savedBook = books.find(b => b.name === lastPosition.book);
+          const savedBook = resolveBook(lastPosition.book);
           if (savedBook) {
             setSelectedBook(savedBook);
             setSelectedChapter(lastPosition.chapter);
@@ -228,7 +248,7 @@ export default function Reading() {
           }
         }
       }
-      const matthewBook = books.find(b => b.name === 'Matthew');
+      const matthewBook = resolveBook('Matthew');
       if (matthewBook) {
         setSelectedBook(matthewBook);
         setSelectedChapter(1);
@@ -725,5 +745,6 @@ export default function Reading() {
     </div>
   );
 }
+
 
 
