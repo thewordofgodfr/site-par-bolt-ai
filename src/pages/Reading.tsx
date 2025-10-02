@@ -289,14 +289,14 @@ export default function Reading() {
   };
 
   // Valeur du “top” pour la barre sticky sous la nav (adapte si besoin)
-  const stickyTop = 'top-24 sm:top-24';
+  const stickyTop = 'top-28 sm:top-24';
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200 overflow-x-hidden`}>
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-6xl mx-auto">
           {/* BARRE RECHERCHE — sticky sous la nav */}
-          <div className={`sticky ${stickyTop} z-30`}>
+          <div className={`sticky ${stickyTop} z-30 mb-2 mb:mb-4`}>
             <div className={`${isDark ? 'bg-gray-900/80' : 'bg-gray-50/80'} backdrop-blur rounded-xl p-3 shadow-sm`}>
               <form onSubmit={handleSubmitSearch}>
                 <div className="relative">
@@ -375,7 +375,7 @@ export default function Reading() {
             </div>
           </div>
 
-          <div aria-hidden className="h-6 md:h-4" />
+          <div aria-hidden className="h-4 md:h-8 lg:h-10" />
 
           {/* Résultats de recherche */}
           {showGlobalSearch && globalSearchResults.length > 0 && (
