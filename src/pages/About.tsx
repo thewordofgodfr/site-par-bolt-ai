@@ -154,7 +154,7 @@ export default function About() {
               </p>
 
               <a
-                href="https://www.instagram.com/trouverdieu?utm_source=qr&igsh=Zjk1aDFzcjJ4cmtn"
+                href="https://www.instagram.com/cherchezdieu?utm_source=qr&igsh=Z2J1dXhzaXhpbHJn"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 ${
