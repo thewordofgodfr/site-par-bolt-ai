@@ -33,7 +33,7 @@ const translations = {
     
     // About page
     aboutTitle: '',
-    aboutDescription: 'The Voice of God vous permet de découvrir la parole de Dieu à travers des versets aléatoires et une lecture complète de la Bible.',
+    aboutDescription: 'The Word of God vous permet de découvrir la parole de Dieu à travers des versets aléatoires et une lecture complète de la Bible.',
     bibleVersions: 'Versions de la Bible',
     frenchVersion: 'Français : Louis Segond 1910 (LSG) - Libre de droit',
     englishVersion: 'Anglais : King James Version (KJV) - Libre de droit',
@@ -77,7 +77,7 @@ const translations = {
     
     // About page
     aboutTitle: '',
-    aboutDescription: 'The Voice of God allows you to discover God\'s word through random verses and complete Bible reading.',
+    aboutDescription: 'The Word of God allows you to discover God\'s word through random verses and complete Bible reading.',
     bibleVersions: 'Bible Versions',
     frenchVersion: 'French: Louis Segond 1910 (LSG) - Public Domain',
     englishVersion: 'English: King James Version (KJV) - Public Domain',
