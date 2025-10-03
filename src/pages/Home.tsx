@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { getRandomVerse, copyToClipboard, prefetchVerseCounts } from '../services/bibleService';
+import { getRandomVerse, copyToClipboard, warmBibleCache } from '../services/bibleService';
 import { BibleVerse } from '../types/bible';
 import { RefreshCw, Copy, Check } from 'lucide-react';
 
@@ -28,44 +28,24 @@ export default function Home() {
 
   const handleVerseClick = () => {
     if (verse) {
-      // on passe aussi le numéro de verset pour surligner côté lecture
       navigateToVerse(verse.book, verse.chapter, verse.verse);
     }
   };
 
   const handleCopyVerse = async () => {
-    if (verse) {
-      const text = `${verse.text}\n\n— ${verse.reference}`;
-      const success = await copyToClipboard(text);
-      if (success) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
+    if (!verse) return;
+    const text = `${verse.text}\n\n— ${verse.reference}`;
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      // Précharge la table des nombres de versets (rend le tirage plus réactif ensuite)
-      prefetchVerseCounts(state.settings.language).catch(() => { /* noop */ });
-
-      try {
-        const v = await getRandomVerse(state.settings.language);
-        if (!cancelled) {
-          setVerse(v);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    // Pré-chauffage (idempotent) + chargement du verset aléatoire
+    warmBibleCache(state.settings.language);
+    fetchRandomVerse();
   }, [state.settings.language]);
 
   return (
@@ -84,7 +64,6 @@ export default function Home() {
 
           {/* Verse Card */}
           <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl shadow-2xl border p-6 md:p-10 transition-all duration-300 hover:shadow-3xl`}>
-
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
@@ -120,9 +99,8 @@ export default function Home() {
                 onClick={fetchRandomVerse}
                 disabled={loading}
                 className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${
-                  isDark
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
+                  isDark ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
+                         : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
                 } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
@@ -133,9 +111,8 @@ export default function Home() {
                 onClick={handleCopyVerse}
                 disabled={!verse || loading}
                 className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${
-                  isDark
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
-                    : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+                  isDark ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+                         : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
                 } ${(!verse || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {copied ? <Check size={20} /> : <Copy size={20} />}
@@ -147,10 +124,9 @@ export default function Home() {
           {/* Footer Quote */}
           <div className="text-center mt-12">
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} italic`}>
-              {state.settings.language === 'fr' 
+              {state.settings.language === 'fr'
                 ? '"Ma parole n\'est-elle pas comme un feu, dit l\'Éternel, Et comme un marteau qui brise le roc?" - Jérémie 23:29'
-                : '"Is not my word like as a fire? saith the LORD; and like a hammer that breaketh the rock in pieces?" - Jeremiah 23:29'
-              }
+                : '"Is not my word like as a fire? saith the LORD; and like a hammer that breaketh the rock in pieces?" - Jeremiah 23:29'}
             </p>
           </div>
         </div>
