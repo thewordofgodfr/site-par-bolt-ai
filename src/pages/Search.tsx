@@ -13,8 +13,8 @@ import {
 import { highlightText } from '../utils/searchUtils';
 
 type Grouped = {
-  bookId: string;               // id interne (ex: "Genesis")
-  displayName: string;          // nom selon langue (ex: "Genèse")
+  bookId: string;
+  displayName: string;
   verses: BibleVerse[];
 };
 
@@ -23,26 +23,28 @@ export default function Search() {
   const { t } = useTranslation();
   const isDark = state.settings.theme === 'dark';
 
-  // --- Persistance de la requête par langue ---
-  const QUERY_KEY = `twog:search:lastQuery:${state.settings.language}`;
+  // --- Clés de persistance ---
+  const queryKey = `twog:search:lastQuery:${state.settings.language}`;
+  const expandedKey = (q: string) =>
+    `twog:search:expanded:${state.settings.language}:${q.trim().toLowerCase()}`;
+  const scrollKey = (q: string) =>
+    `twog:search:scroll:${state.settings.language}:${q.trim().toLowerCase()}`;
+
+  // --- Requête ---
   const [query, setQuery] = useState<string>('');
   useEffect(() => {
-    const saved = sessionStorage.getItem(QUERY_KEY);
+    const saved = sessionStorage.getItem(queryKey);
     if (saved) setQuery(saved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.settings.language]);
   useEffect(() => {
-    sessionStorage.setItem(QUERY_KEY, query);
-  }, [query, QUERY_KEY]);
+    sessionStorage.setItem(queryKey, query);
+  }, [query, queryKey]);
 
-  // Fabrique une clé d’état des groupes spécifique langue+requête
-  const expandedKey = (q: string) =>
-    `twog:search:expanded:${state.settings.language}:${q.trim().toLowerCase()}`;
-
-  // --- Résultats & état ---
+  // --- Résultats / UI ---
   const [results, setResults] = useState<BibleVerse[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // par livre
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const books = useMemo(() => getBibleBooks(), []);
   const getBookName = (id: string) => {
@@ -59,7 +61,7 @@ export default function Search() {
     document.title = state.settings.language === 'fr' ? 'Recherche biblique' : 'Bible Search';
   }, [state.settings.language]);
 
-  // Lancement recherche (petit debounce)
+  // Lancement recherche (debounce) + utilisation du cache interne (géré dans bibleService)
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
@@ -89,18 +91,16 @@ export default function Search() {
       displayName: getBookName(bookId),
       verses: verses.sort((a, b) => (a.chapter === b.chapter ? a.verse - b.verse : a.chapter - b.chapter)),
     }));
-    // Tri selon l’ordre biblique
     arr.sort((a, b) => bibleOrder(a.bookId) - bibleOrder(b.bookId));
     return arr;
   }, [results, state.settings.language, books]);
 
-  // Restaure l’état des groupes (si présent), sinon règle un défaut
+  // Restaure l’état des groupes (et un défaut si rien)
   useEffect(() => {
     if (!grouped.length) {
       setExpanded({});
       return;
     }
-
     let restored: Record<string, boolean> | null = null;
     try {
       const raw = sessionStorage.getItem(expandedKey(query));
@@ -108,14 +108,11 @@ export default function Search() {
     } catch {
       restored = null;
     }
-
     if (restored && Object.keys(restored).length) {
-      // Filtre aux groupes existants
       const next: Record<string, boolean> = {};
-      for (const g of grouped) next[g.bookId] = !!restored![g.bookId];
+      for (const g of grouped) next[g.bookId] = !!restored[g.bookId];
       setExpanded(next);
     } else {
-      // Défaut : tout ouvrir si peu de groupes, sinon tout fermer
       const open = grouped.length <= 2;
       const next: Record<string, boolean> = {};
       for (const g of grouped) next[g.bookId] = open;
@@ -124,19 +121,39 @@ export default function Search() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grouped, query, state.settings.language]);
 
-  // Sauvegarde l’état des groupes à chaque modification
+  // Sauvegarde des groupes
   useEffect(() => {
     if (!grouped.length) return;
     try {
       sessionStorage.setItem(expandedKey(query), JSON.stringify(expanded));
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }, [expanded, grouped, query, state.settings.language]);
+
+  // --- Scroll : RESTAURATION après rendu des groupes ---
+  useEffect(() => {
+    if (!grouped.length || loading) return;
+    const raw = sessionStorage.getItem(scrollKey(query));
+    const y = raw ? parseInt(raw, 10) : 0;
+    if (Number.isFinite(y) && y > 0) {
+      // petit timeout: on attend le rendu réel
+      setTimeout(() => window.scrollTo({ top: y, behavior: 'auto' }), 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grouped, loading, query, state.settings.language]);
+
+  // Sauvegarde du scroll à l’unmount ou si l’onglet se ferme
+  useEffect(() => {
+    const save = () => sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
+    window.addEventListener('beforeunload', save);
+    return () => {
+      save();
+      window.removeEventListener('beforeunload', save);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, state.settings.language]);
 
   const toggleGroup = (bookId: string) =>
     setExpanded(prev => ({ ...prev, [bookId]: !prev[bookId] }));
-
   const expandAll = () => {
     const next: Record<string, boolean> = {};
     for (const g of grouped) next[g.bookId] = true;
@@ -147,13 +164,15 @@ export default function Search() {
     for (const g of grouped) next[g.bookId] = false;
     setExpanded(next);
   };
-
   const clearQuery = () => {
     setQuery('');
     setResults([]);
+    sessionStorage.removeItem(scrollKey(query));
   };
 
+  // Quand on ouvre un verset en Lecture : on SAUVE le scroll
   const openInReading = (v: BibleVerse) => {
+    sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
     navigateToVerse(v.book, v.chapter, v.verse);
   };
 
@@ -280,7 +299,7 @@ export default function Search() {
                   <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>({count})</span>
                 </button>
 
-                {/* Liste des versets du groupe */}
+                {/* Liste des versets */}
                 {open && (
                   <div className="px-4 pb-3 space-y-3">
                     {group.verses.map(v => {
