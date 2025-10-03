@@ -68,11 +68,7 @@ function AppContent() {
       }`}
     >
       <Navigation />
-
-      {/* Spacer égal à la hauteur du header sticky (64px = h-16)
-         Empêche le contenu d'être caché sous la barre de menu */}
-      <div aria-hidden="true" className="h-16" />
-
+      {/* ⚠️ Pas de spacer ici, la nav est sticky et prend déjà sa place */}
       <main>{renderCurrentPage()}</main>
     </div>
   );
