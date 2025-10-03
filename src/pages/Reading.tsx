@@ -46,7 +46,7 @@ export default function Reading() {
   // Sélecteur Livres (overlay)
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
 
-  // On conserve la logique de reprise mais on n'affiche plus la notification
+  // On conserve la logique de reprise (sans afficher la notification)
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
   // Hint swipe (une seule fois par session)
@@ -241,7 +241,7 @@ export default function Reading() {
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
 
-    // Lignes sans "2. " (juste le texte) pour éviter la duplication du numéro
+    // Lignes sans "2. " (juste le texte)
     const body = chosen.map(v => `${v.text}`).join('\n');
 
     const payload = `${ref}\n${body}`;
@@ -275,12 +275,14 @@ export default function Reading() {
     // Seuils : geste principalement horizontal
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
+
+      // >>> Sens inversé demandé :
+      // Vers la gauche (dx < 0) = chapitre PRÉCÉDENT
       if (dx < 0) {
-        // vers la gauche => chapitre suivant
-        if (selectedChapter < selectedBook.chapters) handleNextChapter();
-      } else {
-        // vers la droite => chapitre précédent
         if (selectedChapter > 1) handlePreviousChapter();
+      } else {
+        // Vers la droite (dx > 0) = chapitre SUIVANT
+        if (selectedChapter < selectedBook.chapters) handleNextChapter();
       }
     }
   };
@@ -302,9 +304,9 @@ export default function Reading() {
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          style={{ touchAction: 'pan-y' }} // on laisse le scroll vertical natif
+          style={{ touchAction: 'pan-y' }}
         >
-          {/* Fin bandeau sticky (livre + chapitre). Actions visibles surtout sur desktop */}
+          {/* Bandeau sticky (livre + chapitre). */}
           {selectedBook && (
             <div
               ref={commandBarRef}
@@ -317,7 +319,7 @@ export default function Reading() {
                     {getBookName(selectedBook)} • {t('chapter')} {selectedChapter}
                   </h2>
 
-                  {/* Actions : cachées sur mobile, visibles sur md+ */}
+                  {/* Actions : visibles sur md+ */}
                   <div className="hidden md:flex items-center gap-2">
                     <button
                       onClick={() => setShowBookPicker(true)}
@@ -381,7 +383,6 @@ export default function Reading() {
                     <BookOpen className="w-4 h-4" />
                   </button>
                 </div>
-                {/* Sur mobile, pas de boutons de navigation : swipe gauche/droite pour changer de chapitre */}
               </div>
             </div>
           )}
@@ -418,9 +419,7 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  <h3 className={`text-lg md:text-xl font-semibold mb-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                    {getBookName(selectedBook!)} {t('chapter')} {chapter.chapter}
-                  </h3>
+                  {/* Titre en haut du texte supprimé (déjà présent dans le bandeau sticky) */}
 
                   {/* Liste des versets */}
                   <div className={`${isDark ? 'divide-gray-700' : 'divide-gray-200'} divide-y`}>
