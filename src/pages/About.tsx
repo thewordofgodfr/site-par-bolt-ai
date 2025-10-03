@@ -138,7 +138,7 @@ export default function About() {
               </a>
             </div>
 
-            {/* Instagram TrouverDieu Link */}
+            {/* Instagram Link */}
             <div className={`${isDark ? 'bg-gradient-to-r from-pink-900 to-rose-900' : 'bg-gradient-to-r from-pink-100 to-rose-100'} rounded-xl shadow-lg p-6 text-center`}>
               <div className="flex items-center justify-center mb-4">
                 <Heart size={28} className={`mr-3 ${isDark ? 'text-pink-400' : 'text-pink-600'}`} />
@@ -162,7 +162,7 @@ export default function About() {
                 }`}
               >
                 <Heart size={18} />
-                <span>@trouverdieu</span>
+                <span>@cherchezdieu</span>
                 <ExternalLink size={14} />
               </a>
             </div>
@@ -214,3 +214,4 @@ export default function About() {
     </div>
   );
 }
+
