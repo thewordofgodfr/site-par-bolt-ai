@@ -49,11 +49,12 @@ export default function Reading() {
   // On conserve la logique de reprise (sans afficher la notification)
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
-  // Hint swipe (une seule fois par session)
+  // Hint swipe (une seule fois par session) — nouvelle clé v2 pour forcer l’affichage
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
-    const key = `twog:hint:swipe:${state.settings.language}`;
+    const key = `twog:hint:swipe:v2:${state.settings.language}`;
     if (!sessionStorage.getItem(key)) {
+      // Affiche le hint quelques secondes, puis marque la session
       setShowSwipeHint(true);
       sessionStorage.setItem(key, '1');
       const timer = setTimeout(() => setShowSwipeHint(false), 3500);
@@ -254,7 +255,8 @@ export default function Reading() {
     }
   };
 
-  // ===== Swipe gauche/droite pour changer de chapitre (mobile) =====
+  // ===== Swipe pour changer de chapitre (mobile) =====
+  // Inversé selon ta demande : gauche => SUIVANT, droite => PRÉCÉDENT
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -272,17 +274,16 @@ export default function Reading() {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Seuils : geste principalement horizontal
+    // Geste principalement horizontal
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
 
-      // >>> Sens inversé demandé :
-      // Vers la gauche (dx < 0) = chapitre PRÉCÉDENT
+      // ◀ gauche (dx < 0) => chapitre SUIVANT
       if (dx < 0) {
-        if (selectedChapter > 1) handlePreviousChapter();
-      } else {
-        // Vers la droite (dx > 0) = chapitre SUIVANT
         if (selectedChapter < selectedBook.chapters) handleNextChapter();
+      } else {
+        // ▶ droite (dx > 0) => chapitre PRÉCÉDENT
+        if (selectedChapter > 1) handlePreviousChapter();
       }
     }
   };
@@ -304,7 +305,7 @@ export default function Reading() {
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          style={{ touchAction: 'pan-y' }}
+          style={{ touchAction: 'manipulation' }} // permet swipe horizontal & vertical
         >
           {/* Bandeau sticky (livre + chapitre). */}
           {selectedBook && (
@@ -419,16 +420,19 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Titre en haut du texte supprimé (déjà présent dans le bandeau sticky) */}
-
                   {/* Liste des versets */}
                   <div className={`${isDark ? 'divide-gray-700' : 'divide-gray-200'} divide-y`}>
                     {chapter.verses.map((v, idx) => {
                       const isHighlighted = highlightedVerse === v.verse;
                       const isSelected = selectedVerses.includes(v.verse);
+
                       const selectedBg = isSelected ? (isDark ? 'bg-blue-900/40 border-blue-500' : 'bg-blue-50 border-blue-400') : '';
                       const highlightBg = isHighlighted ? (isDark ? 'bg-yellow-900/30' : 'bg-yellow-50') : '';
-                      const topBorder = idx === 0 ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-200') : '';
+
+                      // Ajout explicite de la bordure top sur le verset 1
+                      const firstVerseBorder = idx === 0
+                        ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-200')
+                        : '';
 
                       return (
                         <div
@@ -436,7 +440,7 @@ export default function Reading() {
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
                           style={{ scrollMarginTop: stickyOffset }}
-                          className={`relative cursor-pointer px-2 py-2 sm:py-3 transition-colors border-l-4 ${selectedBg} ${highlightBg} ${isSelected ? '' : 'border-transparent'} ${topBorder}`}
+                          className={`relative cursor-pointer px-2 py-2 sm:py-3 transition-colors border-l-4 ${selectedBg} ${highlightBg} ${isSelected ? '' : 'border-transparent'} ${firstVerseBorder}`}
                         >
                           <div className="flex items-start gap-3">
                             <span className={`w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0 pt-0.5 flex items-center gap-1`}>
@@ -549,7 +553,7 @@ export default function Reading() {
 
           {/* Hint swipe (une fois par session) */}
           {showSwipeHint && (
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
               <div className={`${isDark ? 'bg-gray-800 text-gray-100' : 'bg-gray-900 text-white'} rounded-full px-3 py-1 text-xs shadow`}>
                 {state.settings.language === 'fr' ? '◀ Glissez / Swipe ▶ pour changer de chapitre' : '◀ Swipe ▶ to change chapter'}
               </div>
