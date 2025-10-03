@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Hauteur du header (garde alignée avec le spacer) */
+:root { --nav-h: 64px; }
+
+/* Pour que les ancres et scrollIntoView respectent le header fixed */
+html { scroll-padding-top: var(--nav-h); }
+
