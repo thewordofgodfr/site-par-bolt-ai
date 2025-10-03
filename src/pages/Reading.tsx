@@ -21,7 +21,7 @@ export default function Reading() {
   const { t } = useTranslation();
 
   // Hauteur de la nav : un peu plus haute sur mobile (barre mobile + sous-nav)
-  const NAV_H = (typeof window !== 'undefined' && window.innerWidth < 640) ? 80 : 64;
+  const NAV_H = 64;
 
   // Mesure de la barre de recherche (sticky) pour calculer l'offset total
   const searchRef = useRef<HTMLDivElement>(null);
@@ -358,7 +358,7 @@ export default function Reading() {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
       {/* BARRE RECHERCHE — sticky sous la nav */}
-      <div ref={searchRef} className="sticky top-20 sm:top-16 z-40 bg-transparent py-0.5">
+      <div ref={searchRef} className="sticky top-16 z-40 bg-transparent py-0.5">
         <div className="container mx-auto px-2 sm:px-4">
           <div className="max-w-6xl mx-auto">
             <div className={`${isDark ? 'bg-gray-900/80' : 'bg-gray-50/80'} backdrop-blur rounded-md sm:rounded-lg p-1.5 sm:p-2 shadow-sm`}>
