@@ -17,10 +17,10 @@ export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
 
-  // Hauteur de la barre de navigation principale (h-16 = 64px)
+  // Hauteur de la nav principale (bandeau du site)
   const NAV_H = 64;
 
-  // Hauteur dynamique de la barre de commandes (mesurée)
+  // Hauteur dynamique du bandeau commandes (mesurée)
   const commandBarRef = useRef<HTMLDivElement>(null);
   const [cmdH, setCmdH] = useState(0);
   useEffect(() => {
@@ -43,10 +43,23 @@ export default function Reading() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [copiedKey, setCopiedKey] = useState<string>('');
 
-  // Sélecteur Livres (overlay) — toutes tailles d’écran
+  // Sélecteur Livres (overlay)
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
 
+  // On conserve la logique de reprise mais on n'affiche plus la notification
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
+
+  // Hint swipe (une seule fois par session)
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  useEffect(() => {
+    const key = `twog:hint:swipe:${state.settings.language}`;
+    if (!sessionStorage.getItem(key)) {
+      setShowSwipeHint(true);
+      sessionStorage.setItem(key, '1');
+      const timer = setTimeout(() => setShowSwipeHint(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [state.settings.language]);
 
   const isDark = state.settings.theme === 'dark';
 
@@ -125,10 +138,8 @@ export default function Reading() {
           setHighlightedVerse(null);
         }
         setHasLoadedContext(true);
-        // Réinitialiser le contexte après l'avoir utilisé
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       } else {
-        // Livre non trouvé, nettoyer le contexte pour laisser le chargement par défaut
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       }
     }
@@ -143,7 +154,7 @@ export default function Reading() {
     }
   }, [state.settings.language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Chargement initial - uniquement si pas de contexte de navigation
+  // Chargement initial - uniquement si pas de contexte
   useEffect(() => {
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) return;
 
@@ -157,7 +168,7 @@ export default function Reading() {
             setSelectedBook(savedBook);
             setSelectedChapter(lastPosition.chapter);
             fetchChapter(savedBook, lastPosition.chapter);
-            setShowRestoredNotification(true);
+            setShowRestoredNotification(true); // mécanique gardée, UI non affichée
             return;
           }
         }
@@ -199,6 +210,7 @@ export default function Reading() {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
 
+  // Compactage de plages (ex: 2,3,4,7 => 2-4,7)
   const compressRanges = (nums: number[]) => {
     if (nums.length === 0) return '';
     const sorted = [...nums].sort((a, b) => a - b);
@@ -219,6 +231,7 @@ export default function Reading() {
     return parts.join(',');
   };
 
+  // Copie : ne plus répéter le numéro du verset dans chaque ligne
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -227,7 +240,10 @@ export default function Reading() {
 
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-    const body = chosen.map(v => `${v.verse}. ${v.text}`).join('\n');
+
+    // Lignes sans "2. " (juste le texte) pour éviter la duplication du numéro
+    const body = chosen.map(v => `${v.text}`).join('\n');
+
     const payload = `${ref}\n${body}`;
 
     const ok = await copyToClipboard(payload);
@@ -238,6 +254,42 @@ export default function Reading() {
     }
   };
 
+  // ===== Swipe gauche/droite pour changer de chapitre (mobile) =====
+  const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeHandled = useRef(false);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+    swipeHandled.current = false;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
+    const t = e.touches[0];
+    const dx = t.clientX - swipeStart.current.x;
+    const dy = t.clientY - swipeStart.current.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Seuils : geste principalement horizontal
+    if (absDx > 60 && absDx > absDy * 1.4) {
+      swipeHandled.current = true;
+      if (dx < 0) {
+        // vers la gauche => chapitre suivant
+        if (selectedChapter < selectedBook.chapters) handleNextChapter();
+      } else {
+        // vers la droite => chapitre précédent
+        if (selectedChapter > 1) handlePreviousChapter();
+      }
+    }
+  };
+
+  const onTouchEnd = () => {
+    swipeStart.current = null;
+    swipeHandled.current = false;
+  };
+
   // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
@@ -245,72 +297,91 @@ export default function Reading() {
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
       {/* Contenu principal */}
       <div className="container mx-auto px-4 pb-6">
-        <div className="max-w-6xl mx-auto">
-          {/* Bandeau commandes (Livres + chapitre) — sticky */}
+        <div
+          className="max-w-6xl mx-auto"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          style={{ touchAction: 'pan-y' }} // on laisse le scroll vertical natif
+        >
+          {/* Fin bandeau sticky (livre + chapitre). Actions visibles surtout sur desktop */}
           {selectedBook && (
             <div
               ref={commandBarRef}
               className="sticky z-30 bg-transparent"
               style={{ top: `${NAV_H}px` }}
             >
-              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md sm:rounded-lg shadow-lg p-2 sm:p-3 mb-2 sm:mb-3`}>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                  <h2 className={`text-base sm:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    {getBookName(selectedBook)}
+              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base`}>
+                    {getBookName(selectedBook)} • {t('chapter')} {selectedChapter}
                   </h2>
 
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    {/* BOUTON LIVRES — toutes tailles */}
+                  {/* Actions : cachées sur mobile, visibles sur md+ */}
+                  <div className="hidden md:flex items-center gap-2">
                     <button
                       onClick={() => setShowBookPicker(true)}
-                      className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-xs sm:text-sm font-semibold shadow-sm ${
+                      className={`px-3 py-1.5 rounded-md text-sm font-semibold shadow-sm ${
                         isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'
                       }`}
                     >
                       {state.settings.language === 'fr' ? 'Livres' : 'Books'}
                     </button>
 
-                    {/* Navigation chapitres */}
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={handlePreviousChapter}
                         disabled={selectedChapter <= 1}
-                        className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all duration-200 ${
+                        className={`p-1.5 rounded-md transition-all ${
                           selectedChapter <= 1
                             ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
+                        title={state.settings.language === 'fr' ? 'Chapitre précédent' : 'Previous chapter'}
                       >
-                        <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
 
                       <div className="relative">
                         <select
                           value={selectedChapter}
                           onChange={(e) => handleChapterSelect(Number(e.target.value))}
-                          className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-md sm:rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 pr-6 sm:pr-7 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200`}
+                          className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-md px-3 py-1.5 pr-7 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500`}
+                          title={state.settings.language === 'fr' ? 'Choisir chapitre' : 'Choose chapter'}
                         >
                           {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(num => (
                             <option key={num} value={num}>{num}</option>
                           ))}
                         </select>
-                        <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
                       </div>
 
                       <button
                         onClick={handleNextChapter}
                         disabled={selectedChapter >= selectedBook.chapters}
-                        className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all duration-200 ${
+                        className={`p-1.5 rounded-md transition-all ${
                           selectedChapter >= selectedBook.chapters
                             ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
+                        title={state.settings.language === 'fr' ? 'Chapitre suivant' : 'Next chapter'}
                       >
-                        <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
+
+                  {/* Icône Livre sur mobile pour ouvrir le sélecteur */}
+                  <button
+                    onClick={() => setShowBookPicker(true)}
+                    className="md:hidden p-1.5 rounded-md bg-blue-600 text-white active:scale-95"
+                    title={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+                    aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                  </button>
                 </div>
+                {/* Sur mobile, pas de boutons de navigation : swipe gauche/droite pour changer de chapitre */}
               </div>
             </div>
           )}
@@ -338,18 +409,7 @@ export default function Reading() {
           {/* Contenu du chapitre */}
           {selectedBook && (
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 min-h-96`}>
-              {/* Notification reprise */}
-              {showRestoredNotification && (
-                <div className={`mb-4 p-3 rounded-lg border-l-4 ${isDark ? 'bg-blue-900 border-blue-500 text-blue-200' : 'bg-blue-50 border-blue-500 text-blue-700'}`}>
-                  <p className="text-sm flex items-center">
-                    <BookOpen size={16} className="mr-2" />
-                    {state.settings.language === 'fr' ? 'Vous avez repris votre lecture là où vous vous étiez arrêté' : 'You resumed reading where you left off'}
-                    <button onClick={() => setShowRestoredNotification(false)} className={`ml-auto text-xs px-2 py-1 rounded ${isDark ? 'hover:bg-blue-800 text-blue-300' : 'hover:bg-blue-100 text-blue-600'}`}>
-                      ✕
-                    </button>
-                  </p>
-                </div>
-              )}
+              {/* (Notification reprise supprimée de l'UI pour gagner de la place) */}
 
               {loading ? (
                 <div className="flex items-center justify-center py-16">
@@ -358,7 +418,7 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  <h3 className={`text-xl font-semibold mb-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                  <h3 className={`text-lg md:text-xl font-semibold mb-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                     {getBookName(selectedBook!)} {t('chapter')} {chapter.chapter}
                   </h3>
 
@@ -485,6 +545,15 @@ export default function Reading() {
           {copiedKey === 'selection' && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow bg-green-600 text-white z-50">
               {state.settings.language === 'fr' ? 'Sélection copiée' : 'Selection copied'}
+            </div>
+          )}
+
+          {/* Hint swipe (une fois par session) */}
+          {showSwipeHint && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+              <div className={`${isDark ? 'bg-gray-800 text-gray-100' : 'bg-gray-900 text-white'} rounded-full px-3 py-1 text-xs shadow`}>
+                {state.settings.language === 'fr' ? '◀ Glissez / Swipe ▶ pour changer de chapitre' : '◀ Swipe ▶ to change chapter'}
+              </div>
             </div>
           )}
         </div>
