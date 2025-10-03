@@ -257,15 +257,18 @@ export default function Reading() {
     }
   };
 
-  // ===== Swipe pour changer de chapitre (mobile) =====
-  // Inversé : ◀ gauche = chapitre SUIVANT, ▶ droite = chapitre PRÉCÉDENT
-  const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
-  const swipeHandled = useRef(false);
+  // Version avec constante (inversée)
+const SWIPE_LEFT_IS_PREV = true; 
+// true  => gauche = précédent, droite = suivant
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
-    swipeHandled.current = false;
+const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
+const swipeHandled = useRef(false);
+
+const onTouchStart = (e: React.TouchEvent) => {
+  const t = e.touches[0];
+  swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+  swipeHandled.current = false;
+  
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
