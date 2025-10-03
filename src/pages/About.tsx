@@ -9,15 +9,21 @@ export default function About() {
 
   const isDark = state.settings.theme === 'dark';
 
+  // --- Titre conditionnel ---
+  const rawTitle = t('aboutTitle');
+  const title = (rawTitle ?? '').trim();
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className={`text-3xl md:text-4xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-              {t('aboutTitle')}
-            </h1>
+            {title && (
+              <h1 className={`text-3xl md:text-4xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                {title}
+              </h1>
+            )}
             <p className={`text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'} max-w-3xl mx-auto leading-relaxed`}>
               {t('aboutDescription')}
             </p>
