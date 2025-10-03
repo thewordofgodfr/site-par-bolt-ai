@@ -205,7 +205,7 @@ export default function About() {
             </div>
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               {state.settings.language === 'fr'
-                ? 'Toutes les versions bibliques utilisées sont dans le domaine public.'
+                ? 'Toutes les versions bibliques utilisées sont dans le domaine public et la LSG 1910 est légèrement modernisée (termes & grammaire) dans le respect du sens original.'
                 : 'All Bible versions used are in the public domain.'}
             </p>
           </div>
