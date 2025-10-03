@@ -1,148 +1,69 @@
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { Home, BookOpen, Settings, Info, Globe, Search } from 'lucide-react';
+import {
+  Home,
+  Search as SearchIcon,
+  BookOpen,
+  Settings,
+  Info,
+} from 'lucide-react';
 
 export default function Navigation() {
-  const { state, dispatch, updateSettings } = useApp();
+  const { state, dispatch } = useApp();
   const { t } = useTranslation();
-
   const isDark = state.settings.theme === 'dark';
-  const label = (fr: string, en: string) =>
-    state.settings.language === 'fr' ? fr : en;
 
-  // Ordre voulu : Accueil, Recherche (loupe), Lecture, ...
+  // Ordre demandé : Accueil → Recherche (loupe) → Lecture → Paramètres → À propos
   const navItems = [
-    { id: 'home', icon: Home, label: t('home') || label('Accueil', 'Home') },
-    { id: 'search', icon: Search, label: t('search') || label('Recherche', 'Search') },
-    { id: 'reading', icon: BookOpen, label: t('reading') || label('Lecture', 'Reading') },
-    { id: 'settings', icon: Settings, label: t('settings') || label('Paramètres', 'Settings') },
-    { id: 'about', icon: Info, label: t('about') || label('À propos', 'About') },
+    { id: 'home', icon: Home, label: t('home') },
+    { id: 'search', icon: SearchIcon, label: t('search') },
+    { id: 'reading', icon: BookOpen, label: t('reading') },
+    { id: 'settings', icon: Settings, label: t('settings') },
+    { id: 'about', icon: Info, label: t('about') },
   ] as const;
 
-  const toggleLanguage = () => {
-    const newLanguage = state.settings.language === 'fr' ? 'en' : 'fr';
-    updateSettings({ language: newLanguage });
-  };
-
-  const go = (page: string) =>
-    dispatch({ type: 'SET_PAGE', payload: page as any });
+  const baseBtn =
+    'transition-all duration-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
+  const activeBtn = isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700';
+  const idleBtn = isDark
+    ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
 
   return (
     <nav
       className={[
-        // Collant en haut partout
-        'sticky top-0 z-40', // z-40 pour laisser passer les overlays (z-50) au-dessus
-        // Fond + flou pour lisibilité quand on scroll
+        // Collé en haut — z-40 pour laisser passer les overlays (livres) en z-50
+        'sticky top-0 z-40',
+        // Fond avec flou pour lisibilité au scroll
         isDark ? 'bg-gray-800/95' : 'bg-white/95',
         'backdrop-blur',
-        // Bordure + ombre légère
+        // Liseré + ombre légère
         isDark ? 'border-b border-gray-700 shadow-sm' : 'border-b border-gray-200 shadow-sm',
-        // Transition douce si on change de thème
         'transition-colors duration-200',
       ].join(' ')}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Bandeau principal */}
-        <div className="flex justify-between items-center h-16">
-          {/* Logo cliquable (ramène à Accueil) */}
-          <button
-            onClick={() => go('home')}
-            className="flex items-center space-x-2 focus:outline-none"
-            aria-label={label('Accueil', 'Home')}
-            title={label('Accueil', 'Home')}
-          >
-            <BookOpen className={`w-8 h-8 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-            <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              TheWordofGod.fr
-            </span>
-          </button>
-
-          {/* Navigation Desktop */}
-          <div className="hidden md:flex items-center space-x-1">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        {/* Barre unique responsive */}
+        <div className="flex items-center justify-between h-16">
+          <div className="flex flex-1 justify-around md:justify-center md:space-x-2">
             {navItems.map(({ id, icon: Icon, label }) => {
               const active = state.currentPage === id;
               return (
                 <button
                   key={id}
-                  onClick={() => go(id)}
+                  onClick={() => dispatch({ type: 'SET_PAGE', payload: id })}
                   aria-current={active ? 'page' : undefined}
-                  className={[
-                    'flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200',
-                    active
-                      ? isDark
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-blue-100 text-blue-700'
-                      : isDark
-                        ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                  ].join(' ')}
                   title={label}
-                >
-                  <Icon size={20} />
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-
-            {/* Sélecteur de langue */}
-            <button
-              onClick={toggleLanguage}
-              className={[
-                'flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200',
-                isDark
-                  ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-              ].join(' ')}
-              aria-label={label('Changer la langue', 'Change language')}
-              title={label('Changer la langue', 'Change language')}
-            >
-              <Globe size={20} />
-              <span>{state.settings.language.toUpperCase()}</span>
-            </button>
-          </div>
-
-          {/* Sélecteur de langue (mobile) */}
-          <button
-            onClick={toggleLanguage}
-            className={[
-              'md:hidden flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200',
-              isDark
-                ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-            ].join(' ')}
-            aria-label={label('Changer la langue', 'Change language')}
-            title={label('Changer la langue', 'Change language')}
-          >
-            <Globe size={20} />
-            <span>{state.settings.language.toUpperCase()}</span>
-          </button>
-        </div>
-
-        {/* Barre de nav Mobile (sous le bandeau) */}
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
-          <div className="flex justify-around py-2">
-            {navItems.map(({ id, icon: Icon, label }) => {
-              const active = state.currentPage === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => go(id)}
-                  aria-current={active ? 'page' : undefined}
                   className={[
-                    'flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all duration-200',
-                    active
-                      ? isDark
-                        ? 'text-blue-400'
-                        : 'text-blue-600'
-                      : isDark
-                        ? 'text-gray-400 hover:text-gray-200'
-                        : 'text-gray-500 hover:text-gray-700',
+                    baseBtn,
+                    'px-3 py-2',
+                    'flex flex-col md:flex-row items-center md:space-x-2',
+                    active ? activeBtn : idleBtn,
                   ].join(' ')}
-                  title={label}
                 >
-                  <Icon size={20} />
-                  <span className="text-xs">{label}</span>
+                  <Icon size={20} className="shrink-0" />
+                  <span className="text-[11px] md:text-sm md:leading-none">{label}</span>
                 </button>
               );
             })}
