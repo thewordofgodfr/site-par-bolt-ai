@@ -95,7 +95,6 @@ export default function Reading() {
     if (selectedBook) {
       setSelectedVerses([]);
       setHighlightedVerse(null);
-      // remonte en haut avant/après chargement
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
@@ -437,10 +436,10 @@ export default function Reading() {
                         ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-200')
                         : '';
 
-                      // Bordure gauche fine par défaut, et bleue/épaisse si sélectionné
+                      // ✅ Correction : parenthèses
                       const leftBorder = isSelected
                         ? 'border-l-4 border-blue-500'
-                        : (isDark ? 'border-l border-gray-700' : 'border-l border-gray-200'));
+                        : (isDark ? 'border-l border-gray-700' : 'border-l border-gray-200');
 
                       return (
                         <div
