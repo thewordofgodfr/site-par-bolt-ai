@@ -49,12 +49,11 @@ export default function Reading() {
   // On conserve la logique de reprise (sans afficher la notification)
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
-  // Hint swipe (une seule fois par session) — nouvelle clé v2 pour forcer l’affichage
+  // Hint swipe (une seule fois par session) — bump version v3
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
-    const key = `twog:hint:swipe:v2:${state.settings.language}`;
+    const key = `twog:hint:swipe:v3:${state.settings.language}`;
     if (!sessionStorage.getItem(key)) {
-      // Affiche le hint quelques secondes, puis marque la session
       setShowSwipeHint(true);
       sessionStorage.setItem(key, '1');
       const timer = setTimeout(() => setShowSwipeHint(false), 3500);
@@ -80,22 +79,27 @@ export default function Reading() {
   const handleBookSelect = (book: BibleBook) => {
     setSelectedBook(book);
     setSelectedChapter(1);
-    fetchChapter(book, 1);
-    saveReadingPosition(book.name, 1);
-    setShowRestoredNotification(false);
     setSelectedVerses([]);
     setHighlightedVerse(null);
     setShowBookPicker(false);
+
+    // Charge le chap.1 du nouveau livre et remonte en haut
+    fetchChapter(book, 1);
+    saveReadingPosition(book.name, 1);
+    setShowRestoredNotification(false);
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
   };
 
   const handleChapterSelect = (chapterNum: number) => {
     setSelectedChapter(chapterNum);
     if (selectedBook) {
+      setSelectedVerses([]);
+      setHighlightedVerse(null);
+      // remonte en haut avant/après chargement
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
       setShowRestoredNotification(false);
-      setSelectedVerses([]);
-      setHighlightedVerse(null);
     }
   };
 
@@ -179,6 +183,7 @@ export default function Reading() {
         setSelectedBook(matthewBook);
         setSelectedChapter(1);
         fetchChapter(matthewBook, 1);
+        try { window.scrollTo({ top: 0 }); } catch {}
       }
     }
   }, [books, selectedBook, state.readingContext]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -241,9 +246,7 @@ export default function Reading() {
 
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-
-    // Lignes sans "2. " (juste le texte)
-    const body = chosen.map(v => `${v.text}`).join('\n');
+    const body = chosen.map(v => `${v.text}`).join('\n'); // sans "N. "
 
     const payload = `${ref}\n${body}`;
 
@@ -256,7 +259,7 @@ export default function Reading() {
   };
 
   // ===== Swipe pour changer de chapitre (mobile) =====
-  // Correction : gauche => PRÉCÉDENT, droite => SUIVANT
+  // Inversé : ◀ gauche = chapitre SUIVANT, ▶ droite = chapitre PRÉCÉDENT
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -278,12 +281,12 @@ export default function Reading() {
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
 
-      // ◀ gauche (dx < 0) => chapitre PRÉCÉDENT
+      // ◀ gauche (dx < 0) => chapitre SUIVANT
       if (dx < 0) {
-        if (selectedChapter > 1) handlePreviousChapter();
-      } else {
-        // ▶ droite (dx > 0) => chapitre SUIVANT
         if (selectedChapter < selectedBook.chapters) handleNextChapter();
+      } else {
+        // ▶ droite (dx > 0) => chapitre PRÉCÉDENT
+        if (selectedChapter > 1) handlePreviousChapter();
       }
     }
   };
@@ -437,7 +440,7 @@ export default function Reading() {
                       // Bordure gauche fine par défaut, et bleue/épaisse si sélectionné
                       const leftBorder = isSelected
                         ? 'border-l-4 border-blue-500'
-                        : (isDark ? 'border-l border-gray-700' : 'border-l border-gray-200');
+                        : (isDark ? 'border-l border-gray-700' : 'border-l border-gray-200'));
 
                       return (
                         <div
@@ -558,10 +561,10 @@ export default function Reading() {
 
           {/* Hint swipe (une fois par session) — CENTRÉ & très visible */}
           {showSwipeHint && (
-            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
-              <div className="px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-white/80 bg-black/90 text-white animate-pulse">
+            <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
+              <div className="px-5 py-4 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-white/90 bg-black/90 text-white animate-pulse">
                 ◀ Glissez / Swipe ▶
-                <div className="text-xs font-normal opacity-90 mt-1 text-center">
+                <div className="text-xs font-normal opacity-95 mt-1 text-center">
                   {state.settings.language === 'fr'
                     ? 'pour changer de chapitre'
                     : 'to change chapter'}
