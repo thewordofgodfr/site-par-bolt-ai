@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
@@ -10,7 +10,7 @@ import About from './pages/About';
 function AppContent() {
   const { state } = useApp();
 
-  // 1) Titre dynamique + thème + attribut lang
+  // Titre dynamique + thème + attribut lang
   useEffect(() => {
     const { language, theme } = state.settings;
 
@@ -44,40 +44,22 @@ function AppContent() {
     root.setAttribute('lang', language === 'fr' ? 'fr' : 'en');
   }, [state.currentPage, state.settings.language, state.settings.theme]);
 
-  // 2) Mesure en temps réel de la hauteur du <nav> pour éviter tout chevauchement
-  const [navH, setNavH] = useState<number>(64);
-
+  // Empêche le navigateur de restaurer une ancienne position de scroll
   useEffect(() => {
-    const measure = () => {
-      const nav = document.querySelector('nav') as HTMLElement | null;
-      if (nav) setNavH(nav.offsetHeight);
-    };
-
-    measure(); // première mesure
-
-    // Observe les changements de taille du nav (contenu qui wrappe, etc.)
-    const nav = document.querySelector('nav') as HTMLElement | null;
-    let ro: ResizeObserver | null = null;
-    if (nav && 'ResizeObserver' in window) {
-      ro = new ResizeObserver(() => measure());
-      ro.observe(nav);
+    if ('scrollRestoration' in window.history) {
+      try {
+        window.history.scrollRestoration = 'manual';
+      } catch {}
     }
-
-    // Recalcule aussi au resize/rotation
-    window.addEventListener('resize', measure);
-    window.addEventListener('orientationchange', measure);
-
-    return () => {
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('orientationchange', measure);
-      if (ro && nav) ro.unobserve(nav);
-    };
   }, []);
 
-  // Petit ajustement fin : si le contenu est "trop bas", rends ADJUST plus négatif (ex. -8)
-  // S'il est "trop haut" (caché sous la nav), rends ADJUST moins négatif (ex. -2 ou 0)
-  const ADJUST = -125; // valeur conseillée pour mobile + PC ; ajuste si besoin
-  const mainPaddingTop = Math.max(navH + ADJUST, 0);
+  // Reviens TJS en haut quand on change de "page" (Home / Search / Reading / Settings / About)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0 });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [state.currentPage]);
 
   const renderCurrentPage = () => {
     switch (state.currentPage) {
@@ -103,8 +85,8 @@ function AppContent() {
       }`}
     >
       <Navigation />
-      {/* Le padding-top s’aligne sur la vraie hauteur du nav (avec micro-ajustement) */}
-      <main style={{ paddingTop: `${mainPaddingTop}px` }}>{renderCurrentPage()}</main>
+      {/* Pas de padding-top artificiel : la nav en sticky reste dans le flux */}
+      <main>{renderCurrentPage()}</main>
     </div>
   );
 }
@@ -116,4 +98,3 @@ export default function App() {
     </AppProvider>
   );
 }
-
