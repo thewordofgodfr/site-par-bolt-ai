@@ -44,37 +44,6 @@ function AppContent() {
     root.setAttribute('lang', language === 'fr' ? 'fr' : 'en');
   }, [state.currentPage, state.settings.language, state.settings.theme]);
 
-  // Forcer un léger scroll sous la barre de navigation au chargement de certaines pages
-  useEffect(() => {
-    // Lecture gère son propre scroll, on évite d'interférer
-    const needsOffset = ['home', 'search', 'settings', 'about'] as const;
-    if (!needsOffset.includes(state.currentPage as any)) return;
-
-    const NAV_H = 64;         // hauteur approx. de la barre
-    const OFFSET = NAV_H + 8; // petit tampon
-
-    let id1 = 0;
-    let id2 = 0;
-
-    id1 = requestAnimationFrame(() => {
-      // reset au tout début
-      window.scrollTo({ top: 0, left: 0 });
-      // puis décale sous la barre une fois le layout prêt
-      id2 = requestAnimationFrame(() => {
-        try {
-          window.scrollTo({ top: OFFSET, left: 0 });
-        } catch {
-          window.scrollTo(0, OFFSET);
-        }
-      });
-    });
-
-    return () => {
-      if (id1) cancelAnimationFrame(id1);
-      if (id2) cancelAnimationFrame(id2);
-    };
-  }, [state.currentPage]);
-
   const renderCurrentPage = () => {
     switch (state.currentPage) {
       case 'home':
@@ -99,7 +68,9 @@ function AppContent() {
       }`}
     >
       <Navigation />
-      {/* ⚠️ Pas de spacer ici, la nav est sticky et prend déjà sa place */}
+      {/* Spacer égal à la hauteur de la nav sticky : évite que le contenu passe dessous */}
+      <div className="h-20 sm:h-16" aria-hidden />
+
       <main>{renderCurrentPage()}</main>
     </div>
   );
@@ -112,4 +83,3 @@ export default function App() {
     </AppProvider>
   );
 }
-
