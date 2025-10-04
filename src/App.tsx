@@ -69,7 +69,7 @@ function AppContent() {
     >
       <Navigation />
       {/* Spacer égal à la hauteur de la nav sticky : évite que le contenu passe dessous */}
-      <div className="h-20 sm:h-16" aria-hidden />
+      <div className="h-[72px] sm:h-[60px]" aria-hidden />
 
       <main>{renderCurrentPage()}</main>
     </div>
