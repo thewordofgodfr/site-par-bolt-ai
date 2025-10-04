@@ -76,8 +76,8 @@ function AppContent() {
 
   // Petit ajustement fin : si le contenu est "trop bas", rends ADJUST plus négatif (ex. -8)
   // S'il est "trop haut" (caché sous la nav), rends ADJUST moins négatif (ex. -2 ou 0)
-  const ADJUST = -6; // valeur conseillée pour mobile + PC ; ajuste si besoin
-  const mainPaddingTop = Math.max(navH + ADJUST, -8);
+  const ADJUST = -10; // valeur conseillée pour mobile + PC ; ajuste si besoin
+  const mainPaddingTop = Math.max(navH + ADJUST, 0);
 
   const renderCurrentPage = () => {
     switch (state.currentPage) {
