@@ -415,7 +415,7 @@ export default function Reading() {
 
           {/* Contenu du chapitre */}
           {selectedBook && (
-            //⬇️ CHANGEMENT ICI pour quasi plein écran mobile
+            // ⬇️ Quasi plein écran mobile
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-3 -mx-4 sm:mx-0 min-h-96`}>
               {/* (Notification reprise supprimée de l'UI pour gagner de la place) */}
 
@@ -435,12 +435,10 @@ export default function Reading() {
                       const selectedBg = isSelected ? (isDark ? 'bg-blue-900/40' : 'bg-blue-50') : '';
                       const highlightBg = isHighlighted ? (isDark ? 'bg-yellow-900/30' : 'bg-yellow-50') : '';
 
-                      // Ajout explicite de la bordure top sur le verset 1
                       const firstVerseBorder = idx === 0
                         ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-200')
                         : '';
 
-                      // ✅ Correction : parenthèses
                       const leftBorder = isSelected
                         ? 'border-l-4 border-blue-500'
                         : (isDark ? 'border-l border-gray-700' : 'border-l border-gray-200');
@@ -451,22 +449,24 @@ export default function Reading() {
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
                           style={{ scrollMarginTop: stickyOffset }}
-                          className={`relative cursor-pointer px-2 py-2 sm:py-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder}`}
+                          className={`relative cursor-pointer px-3 py-2 sm:py-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder} pr-16 sm:pr-20`}
                         >
-                          <div className="flex items-start gap-3">
-                            <span className={`w-8 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0 pt-0.5 flex items-center gap-1 select-none`}>
-                              {v.verse}
-                              {isSelected && <Check size={14} className={isDark ? 'text-blue-300' : 'text-blue-600'} />}
-                            </span>
+                          {/* Numéro/label en haut-droite */}
+                          <span
+                            className={`absolute right-2 top-2 text-xs sm:text-sm select-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                          >
+                            {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
+                            {isSelected && (
+                              <Check size={14} className={`inline ml-1 ${isDark ? 'text-blue-300' : 'text-blue-600'}`} />
+                            )}
+                          </span>
 
-                            <div className="flex-1">
-                              <div
-                                className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`}
-                                style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                              >
-                                {v.text}
-                              </div>
-                            </div>
+                          {/* Texte pleine largeur */}
+                          <div
+                            className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`}
+                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
+                          >
+                            {v.text}
                           </div>
                         </div>
                       );
