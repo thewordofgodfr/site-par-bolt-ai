@@ -43,8 +43,9 @@ export default function Reading() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [copiedKey, setCopiedKey] = useState<string>('');
 
-  // Sélecteur Livres (overlay)
+  // Sélecteurs (overlays)
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
+  const [showChapterPicker, setShowChapterPicker] = useState<boolean>(false);
 
   // On conserve la logique de reprise (sans afficher la notification)
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
@@ -87,7 +88,7 @@ export default function Reading() {
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
     setShowRestoredNotification(false);
-    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+    try { window.scrollTo({ top: 0 }); } catch {}
   };
 
   const handleChapterSelect = (chapterNum: number) => {
@@ -95,7 +96,7 @@ export default function Reading() {
     if (selectedBook) {
       setSelectedVerses([]);
       setHighlightedVerse(null);
-      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+      try { window.scrollTo({ top: 0 }); } catch {} // ⬅️ instantané (sans smooth)
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
       setShowRestoredNotification(false);
@@ -257,9 +258,8 @@ export default function Reading() {
     }
   };
 
-  // Version avec constante (inversée)
+  // Swipe chapitres
   const SWIPE_LEFT_IS_PREV = true;
-
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -315,8 +315,27 @@ export default function Reading() {
             >
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base`}>
-                    {getBookName(selectedBook)} • {t('chapter')} {selectedChapter}
+                  {/* Titre : seul "Chapitre N" cliquable sur mobile */}
+                  <h2
+                    className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-1`}
+                  >
+                    <span className="truncate">{getBookName(selectedBook)} •</span>
+
+                    {/* Mobile : bouton cliquable */}
+                    <button
+                      type="button"
+                      onClick={() => setShowChapterPicker(true)}
+                      className="md:hidden hover:underline decoration-dotted underline-offset-4"
+                      title={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
+                      aria-label={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
+                    >
+                      {t('chapter')} {selectedChapter}
+                    </button>
+
+                    {/* Desktop : simple texte */}
+                    <span className="hidden md:inline">
+                      {t('chapter')} {selectedChapter}
+                    </span>
                   </h2>
 
                   {/* Actions : visibles sur md+ */}
@@ -527,6 +546,50 @@ export default function Reading() {
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Overlay Chapitres (desktop & mobile) */}
+          {showChapterPicker && selectedBook && (
+            <div className="fixed inset-0 z-50">
+              <div
+                className="absolute inset-0 bg-black/60"
+                onClick={() => setShowChapterPicker(false)}
+                aria-hidden="true"
+              />
+              <div className={`absolute inset-0 ${isDark ? 'bg-gray-900' : 'bg-white'} p-4 overflow-y-auto`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                    {state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
+                  </h3>
+                  <button
+                    onClick={() => setShowChapterPicker(false)}
+                    className={`${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}
+                  >
+                    {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 pb-10">
+                  {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => {
+                    const active =
+                      num === selectedChapter
+                        ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800')
+                        : (isDark ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200');
+
+                    return (
+                      <button
+                        key={`chap-${num}`}
+                        onClick={() => { handleChapterSelect(num); setShowChapterPicker(false); }}
+                        className={`h-10 rounded-lg text-sm font-medium ${active}`}
+                        aria-current={num === selectedChapter ? 'page' : undefined}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
