@@ -117,16 +117,7 @@ export default function Home() {
                 <span>{copied ? t('verseCopied') : t('copyVerse')}</span>
               </button>
             </div>
-          </div>
-
-          {/* Mini paragraphe SEO discret */}
-          <div className="mt-6 md:mt-8 text-center">
-            <p className={`text-xs md:text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} max-w-3xl mx-auto leading-relaxed`}>
-              {state.settings.language === 'fr'
-                ? 'Lire la Bible en ligne gratuitement (LSG 1910 & KJV). Verset aléatoire, recherche par mots, lecture chapitre par chapitre. Sans inscription.'
-                : 'Read the Bible online for free (LSG 1910 & KJV). Random verse, keyword search, chapter-by-chapter reading. No account needed.'}
-            </p>
-          </div>
+           </div>
 
           {/* Citation fixe (cliquable) */}
           <div className="text-center mt-12">
