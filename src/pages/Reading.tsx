@@ -416,7 +416,7 @@ export default function Reading() {
           {/* Contenu du chapitre */}
           {selectedBook && (
             //⬇️ CHANGEMENT ICI pour quasi plein écran mobile
-            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-3 -mx-2 sm:mx-0 min-h-96`}>
+            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-3 -mx-4 sm:mx-0 min-h-96`}>
               {/* (Notification reprise supprimée de l'UI pour gagner de la place) */}
 
               {loading ? (
