@@ -49,7 +49,7 @@ export default function Reading() {
   // On conserve la logique de reprise (sans afficher la notification)
   const [showRestoredNotification, setShowRestoredNotification] = useState(false);
 
-  // Hint swipe (une seule fois par session) — bump version v3
+  // Hint swipe (une seule fois par session)
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v3:${state.settings.language}`;
@@ -172,7 +172,7 @@ export default function Reading() {
             setSelectedBook(savedBook);
             setSelectedChapter(lastPosition.chapter);
             fetchChapter(savedBook, lastPosition.chapter);
-            setShowRestoredNotification(true); // mécanique gardée, UI non affichée
+            setShowRestoredNotification(true);
             return;
           }
         }
@@ -196,7 +196,7 @@ export default function Reading() {
         if (!el) return;
         const rect = el.getBoundingClientRect();
         const current = window.scrollY || document.documentElement.scrollTop || 0;
-        const target = current + rect.top - (NAV_H + cmdH) - 8; // petit tampon
+        const target = current + rect.top - (NAV_H + cmdH) - 8;
         window.scrollTo({ top: Math.max(target, 0), behavior: 'smooth' });
       }, 120);
       return () => clearTimeout(timer);
@@ -245,7 +245,7 @@ export default function Reading() {
 
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-    const body = chosen.map(v => `${v.text}`).join('\n'); // sans "N. "
+    const body = chosen.map(v => `${v.text}`).join('\n');
 
     const payload = `${ref}\n${body}`;
 
@@ -258,8 +258,7 @@ export default function Reading() {
   };
 
   // Version avec constante (inversée)
-  const SWIPE_LEFT_IS_PREV = true; 
-  // true  => gauche = précédent, droite = suivant
+  const SWIPE_LEFT_IS_PREV = true;
 
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
@@ -268,7 +267,6 @@ export default function Reading() {
     const t = e.touches[0];
     swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
     swipeHandled.current = false;
-    
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
@@ -279,15 +277,11 @@ export default function Reading() {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Geste principalement horizontal
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
-
-      // ◀ gauche (dx < 0) => chapitre SUIVANT
       if (dx < 0) {
         if (selectedChapter < selectedBook.chapters) handleNextChapter();
       } else {
-        // ▶ droite (dx > 0) => chapitre PRÉCÉDENT
         if (selectedChapter > 1) handlePreviousChapter();
       }
     }
@@ -310,9 +304,9 @@ export default function Reading() {
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          style={{ touchAction: 'manipulation' }} // permet swipe horizontal & vertical
+          style={{ touchAction: 'manipulation' }}
         >
-          {/* Bandeau sticky (livre + chapitre). */}
+          {/* Bandeau sticky (livre + chapitre) */}
           {selectedBook && (
             <div
               ref={commandBarRef}
@@ -415,10 +409,8 @@ export default function Reading() {
 
           {/* Contenu du chapitre */}
           {selectedBook && (
-            // ⬇️ Quasi plein écran mobile
+            // Quasi plein écran mobile
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-3 -mx-4 sm:mx-0 min-h-96`}>
-              {/* (Notification reprise supprimée de l'UI pour gagner de la place) */}
-
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
@@ -449,11 +441,11 @@ export default function Reading() {
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
                           style={{ scrollMarginTop: stickyOffset }}
-                          className={`relative cursor-pointer px-3 py-2 sm:py-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder} pr-16 sm:pr-20`}
+                          className={`relative cursor-pointer px-3 pt-6 sm:pt-7 pb-2 sm:pb-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder}`}
                         >
-                          {/* Numéro/label en haut-droite */}
+                          {/* Libellé "verset N" en haut-droite */}
                           <span
-                            className={`absolute right-2 top-2 text-xs sm:text-sm select-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                            className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
                           >
                             {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
                             {isSelected && (
@@ -562,7 +554,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Hint swipe (une fois par session) — CENTRÉ & très visible */}
+          {/* Hint swipe */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
               <div className="px-5 py-4 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-white/90 bg-black/90 text-white animate-pulse">
