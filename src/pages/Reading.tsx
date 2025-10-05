@@ -258,17 +258,17 @@ export default function Reading() {
   };
 
   // Version avec constante (inversée)
-const SWIPE_LEFT_IS_PREV = true; 
-// true  => gauche = précédent, droite = suivant
+  const SWIPE_LEFT_IS_PREV = true; 
+  // true  => gauche = précédent, droite = suivant
 
-const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
-const swipeHandled = useRef(false);
+  const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeHandled = useRef(false);
 
-const onTouchStart = (e: React.TouchEvent) => {
-  const t = e.touches[0];
-  swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
-  swipeHandled.current = false;
-  
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+    swipeHandled.current = false;
+    
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
@@ -415,7 +415,8 @@ const onTouchStart = (e: React.TouchEvent) => {
 
           {/* Contenu du chapitre */}
           {selectedBook && (
-            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 min-h-96`}>
+            {/* ⬇️ CHANGEMENT ICI pour quasi plein écran mobile */}
+            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-3 -mx-2 sm:mx-0 min-h-96`}>
               {/* (Notification reprise supprimée de l'UI pour gagner de la place) */}
 
               {loading ? (
