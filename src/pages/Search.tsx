@@ -1,4 +1,3 @@
-import { saveReadingSlot } from '../services/readingSlots';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { getBibleBooks, searchInBible } from '../services/bibleService';
@@ -11,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { highlightText } from '../utils/searchUtils';
+import { saveSlot as saveQuickSlot } from '../utils/readingSlots';
 
 type Grouped = {
   bookId: string;
@@ -60,7 +60,7 @@ export default function Search() {
     document.title = state.settings.language === 'fr' ? 'Recherche biblique' : 'Bible Search';
   }, [state.settings.language]);
 
-  // Lancement recherche (debounce) + utilisation du cache interne (géré dans bibleService)
+  // Lancement recherche (debounce)
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
@@ -94,7 +94,7 @@ export default function Search() {
     return arr;
   }, [results, state.settings.language, books]);
 
-  // Restaure l’état des groupes (et un défaut si rien)
+  // Restaure l’état des groupes
   useEffect(() => {
     if (!grouped.length) {
       setExpanded({});
@@ -128,19 +128,18 @@ export default function Search() {
     } catch {}
   }, [expanded, grouped, query, state.settings.language]);
 
-  // --- Scroll : RESTAURATION après rendu des groupes ---
+  // --- Scroll : RESTAURATION
   useEffect(() => {
     if (!grouped.length || loading) return;
     const raw = sessionStorage.getItem(scrollKey(query));
     const y = raw ? parseInt(raw, 10) : 0;
     if (Number.isFinite(y) && y > 0) {
-      // petit timeout: on attend le rendu réel
       setTimeout(() => window.scrollTo({ top: y, behavior: 'auto' }), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grouped, loading, query, state.settings.language]);
 
-  // Sauvegarde du scroll à l’unmount ou si l’onglet se ferme
+  // Sauvegarde du scroll à l’unmount
   useEffect(() => {
     const save = () => sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
     window.addEventListener('beforeunload', save);
@@ -169,20 +168,11 @@ export default function Search() {
     sessionStorage.removeItem(scrollKey(query));
   };
 
-  // Quand on ouvre un verset en Lecture : on SAUVE le scroll
+  // Ouvrir en Lecture + enregistrer la "mémoire recherche" (slot #0)
   const openInReading = (v: BibleVerse) => {
-  sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
-
-  // NEW: on mémorise la dernière lecture venant de la recherche dans le slot "S"
-  saveReadingSlot('S', {
-    book: v.book,
-    chapter: v.chapter,
-    verse: v.verse,
-    language: state.settings.language,
-  });
-
-  navigateToVerse(v.book, v.chapter, v.verse);
-
+    try { saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse }); } catch {}
+    sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
+    navigateToVerse(v.book, v.chapter, v.verse);
   };
 
   const total = results.length;
