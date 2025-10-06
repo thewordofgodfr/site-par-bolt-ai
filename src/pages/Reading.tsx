@@ -8,21 +8,14 @@ import {
   Book,
   ChevronLeft,
   ChevronRight,
+  BookOpen,
   Copy as CopyIcon,
   Check
 } from 'lucide-react';
-
-// NEW
-import {
-  getReadingSlots,
-  saveReadingSlot,
-  getReadingSlot,
-  type ReadingSlot,
-  type SlotId
-} from '../services/readingSlots';
+import { readSlot as readQuickSlot, saveSlot as saveQuickSlot, clearSlot as clearQuickSlot, type QuickSlot } from '../utils/readingSlots';
 
 export default function Reading() {
-  const { state, dispatch, saveReadingPosition, navigateToVerse } = useApp(); // + navigateToVerse
+  const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
 
   // Hauteur de la nav principale (bandeau du site)
@@ -104,7 +97,7 @@ export default function Reading() {
     if (selectedBook) {
       setSelectedVerses([]);
       setHighlightedVerse(null);
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try { window.scrollTo({ top: 0 }); } catch {} // instantané
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
       setShowRestoredNotification(false);
@@ -122,7 +115,7 @@ export default function Reading() {
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
-  // Helper pour résoudre un nom de livre (FR/EN/ID interne)
+  // Helper pour résoudre un nom de livre
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
     let found = books.find(b => b.name === bookIdentifier);
     if (found) return found;
@@ -133,7 +126,7 @@ export default function Reading() {
     return null;
   };
 
-  // Navigation contextuelle - s'exécute une seule fois au montage
+  // Navigation contextuelle - une fois au montage
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
   useEffect(() => {
@@ -145,11 +138,8 @@ export default function Reading() {
         fetchChapter(book, state.readingContext.chapter);
         setShowRestoredNotification(false);
         setSelectedVerses([]);
-        if (state.readingContext.verse) {
-          setHighlightedVerse(state.readingContext.verse);
-        } else {
-          setHighlightedVerse(null);
-        }
+        if (state.readingContext.verse) setHighlightedVerse(state.readingContext.verse);
+        else setHighlightedVerse(null);
         setHasLoadedContext(true);
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
       } else {
@@ -167,7 +157,7 @@ export default function Reading() {
     }
   }, [state.settings.language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Chargement initial - uniquement si pas de contexte
+  // Chargement initial - si pas de contexte
   useEffect(() => {
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) return;
 
@@ -224,7 +214,7 @@ export default function Reading() {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
 
-  // Compactage de plages (ex: 2,3,4,7 => 2-4,7)
+  // Compactage de plages
   const compressRanges = (nums: number[]) => {
     if (nums.length === 0) return '';
     const sorted = [...nums].sort((a, b) => a - b);
@@ -235,17 +225,13 @@ export default function Reading() {
     for (let i = 1; i < sorted.length; i++) {
       const n = sorted[i];
       if (n === prev + 1) prev = n;
-      else {
-        push();
-        start = n;
-        prev = n;
-      }
+      else { push(); start = n; prev = n; }
     }
     push();
     return parts.join(',');
   };
 
-  // Copie : ne plus répéter le numéro du verset dans chaque ligne
+  // Copie sélection
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -266,7 +252,8 @@ export default function Reading() {
     }
   };
 
-  // Swipe chapitres
+  // Swipe chapitres (mobile)
+  const SWIPE_LEFT_IS_PREV = true;
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -302,69 +289,75 @@ export default function Reading() {
   // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
-  // ======= Mémoires lecture =======
-  const [slots, setSlots] = useState(getReadingSlots());
+  /* =========================
+     Quick Slots (MOBILE FIRST)
+     ========================= */
+  const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'twog:reading:slots:v1') {
-        setSlots(getReadingSlots());
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    try { setQuickSlots(readQuickSlots()); } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveCurrentToSlot = (id: SlotId) => {
-    if (!selectedBook || !selectedChapter) return;
-    saveReadingSlot(id, {
-      book: selectedBook.name,
-      chapter: selectedChapter,
-      language: state.settings.language,
-    });
-    setSlots(getReadingSlots());
-  };
+  function readQuickSlots(): QuickSlot[] {
+    return [0,1,2,3].map(i => readQuickSlot(i));
+  }
+  function refreshSlots() { setQuickSlots(readQuickSlots()); }
 
-  const goToSlot = (id: SlotId) => {
-    const s = getReadingSlot(id);
-    if (!s) return;
-    navigateToVerse(s.book, s.chapter, s.verse ?? 1);
-  };
+  function jumpToSlot(i: number) {
+    const slot = readQuickSlot(i);
+    if (!slot) {
+      // Si vide → enregistre la position actuelle
+      if (!selectedBook || !selectedChapter) return;
+      saveQuickSlot(i, { book: selectedBook.name, chapter: selectedChapter });
+      refreshSlots();
+      return;
+    }
+    // Aller à la position mémorisée
+    const book = resolveBook(slot.book);
+    if (!book) return;
+    setSelectedBook(book);
+    setSelectedChapter(slot.chapter);
+    setSelectedVerses([]);
+    setHighlightedVerse(slot.verse ?? null);
+    try { window.scrollTo({ top: 0 }); } catch {}
+    fetchChapter(book, slot.chapter);
+    saveReadingPosition(book.name, slot.chapter);
+  }
 
-  const onSlotClick = (id: SlotId) => (e: React.MouseEvent<HTMLButtonElement>) => {
-    const wantsSave = e.ctrlKey || e.metaKey || e.shiftKey || e.altKey;
-    if (wantsSave) {
-      saveCurrentToSlot(id);
-    } else {
-      goToSlot(id);
+  function clearSlot(i: number) {
+    clearQuickSlot(i);
+    refreshSlots();
+  }
+
+  // Long press pour effacer (mobile)
+  const longPressTimer = useRef<number | null>(null);
+  const longPressed = useRef<boolean>(false);
+  const startLongPress = (i: number) => {
+    longPressed.current = false;
+    longPressTimer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      clearSlot(i);
+    }, 600); // 600ms press = clear
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
   };
 
-  const slotHas = (id: SlotId) => !!slots[id];
-
-  const slotBtnClass = (id: SlotId) => {
-    const has = slotHas(id);
-    const base = 'px-2.5 py-1 rounded-md text-xs font-semibold border transition';
-    if (id === 'S') {
-      return has
-        ? `${base} ${isDark ? 'bg-blue-900/30 text-blue-200 border-blue-700 hover:bg-blue-900/40' : 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'}`
-        : `${base} ${isDark ? 'bg-transparent text-blue-300 border-blue-800 opacity-60' : 'bg-transparent text-blue-500 border-blue-200 opacity-60'}`;
+  const onSlotTouchStart = (i: number) => startLongPress(i);
+  const onSlotTouchEnd = (i: number) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
-    return has
-      ? `${base} ${isDark ? 'bg-emerald-900/25 text-emerald-200 border-emerald-700 hover:bg-emerald-900/35' : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'}`
-      : `${base} ${isDark ? 'bg-transparent text-gray-300 border-gray-700 opacity-60' : 'bg-transparent text-gray-500 border-gray-300 opacity-60'}`;
-  };
-
-  const slotTitle = (id: SlotId) => {
-    const has = slotHas(id);
-    if (id === 'S') {
-      return state.settings.language === 'fr'
-        ? has ? 'Recherche : aller (clic) · enregistrer (Ctrl/Cmd/Alt/Shift + clic)' : 'Recherche : vide'
-        : has ? 'Search : go (click) · save (Ctrl/Cmd/Alt/Shift + click)' : 'Search : empty';
+    if (!longPressed.current) {
+      // Tap normal
+      jumpToSlot(i);
     }
-    return state.settings.language === 'fr'
-      ? has ? `Mémoire ${id} : aller (clic) · enregistrer (Ctrl/Cmd/Alt/Shift + clic)` : `Mémoire ${id} : vide`
-      : has ? `Slot ${id}: go (click) · save (Ctrl/Cmd/Alt/Shift + click)` : `Slot ${id}: empty`;
   };
+  const onSlotTouchMove = () => cancelLongPress();
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
@@ -386,10 +379,9 @@ export default function Reading() {
             >
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
                 <div className="flex items-center justify-between gap-2">
-                  {/* Titre + commandes mobiles */}
-                  <h2
-                    className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-2`}
-                  >
+                  {/* Titre / boutons livre & chapitre (mobile en bleu) */}
+                  <h2 className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-2`}>
+                    {/* Mobile : livre bouton */}
                     <button
                       type="button"
                       onClick={() => setShowBookPicker(true)}
@@ -402,10 +394,12 @@ export default function Reading() {
                       <ChevronDown className="w-3 h-3 opacity-90" />
                     </button>
 
+                    {/* Desktop : nom du livre */}
                     <span className="hidden md:inline truncate">
                       {getBookName(selectedBook)} •
                     </span>
 
+                    {/* Mobile : chapitre bouton */}
                     <button
                       type="button"
                       onClick={() => setShowChapterPicker(true)}
@@ -418,12 +412,13 @@ export default function Reading() {
                       <ChevronDown className="w-3 h-3 opacity-90" />
                     </button>
 
+                    {/* Desktop : "Chapitre N" en texte */}
                     <span className="hidden md:inline">
                       {t('chapter')} {selectedChapter}
                     </span>
                   </h2>
 
-                  {/* Actions : visibles sur md+ */}
+                  {/* Actions desktop (inchangé) */}
                   <div className="hidden md:flex items-center gap-2">
                     <button
                       onClick={() => setShowBookPicker(true)}
@@ -475,54 +470,42 @@ export default function Reading() {
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
-
-                    {/* ====== Boutons mémoire lecture (desktop) ====== */}
-                    <div className="hidden md:flex items-center gap-1 ml-1">
-                      <button
-                        type="button"
-                        onClick={onSlotClick('S')}
-                        className={slotBtnClass('S')}
-                        disabled={!slotHas('S')}
-                        title={slotTitle('S')}
-                        aria-label="Slot Search"
-                      >
-                        S
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onSlotClick('1')}
-                        className={slotBtnClass('1')}
-                        title={slotTitle('1')}
-                        aria-label="Slot 1"
-                      >
-                        1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onSlotClick('2')}
-                        className={slotBtnClass('2')}
-                        title={slotTitle('2')}
-                        aria-label="Slot 2"
-                      >
-                        2
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onSlotClick('3')}
-                        className={slotBtnClass('3')}
-                        title={slotTitle('3')}
-                        aria-label="Slot 3"
-                      >
-                        3
-                      </button>
-                    </div>
                   </div>
                 </div>
+
+                {/* ===== Quick Slots — MOBILE (md:hidden) ===== */}
+                <div className="md:hidden mt-2 flex items-center gap-2">
+                  {[0,1,2,3].map((i) => {
+                    const s = quickSlots[i];
+                    const isSearch = i === 0;
+                    const filled = s !== null;
+                    const bg = isSearch
+                      ? (filled ? 'bg-indigo-600' : (isDark ? 'bg-indigo-900/40' : 'bg-indigo-50'))
+                      : (filled ? 'bg-blue-600' : (isDark ? 'bg-gray-700' : 'bg-gray-200'));
+                    const text = filled ? 'text-white' : (isDark ? 'text-gray-200' : 'text-gray-700');
+
+                    return (
+                      <button
+                        key={`qs-m-${i}`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold shadow ${bg} ${text} active:scale-95`}
+                        onClick={() => jumpToSlot(i)}
+                        onTouchStart={() => onSlotTouchStart(i)}
+                        onTouchEnd={() => onSlotTouchEnd(i)}
+                        onTouchMove={onSlotTouchMove}
+                        aria-label={isSearch ? 'Recherche' : `Mémoire ${i}`}
+                        title={isSearch ? 'Recherche' : `Mémoire ${i}`}
+                      >
+                        {isSearch ? '🔎' : i}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* ===== /Quick Slots mobile ===== */}
               </div>
             </div>
           )}
 
-          {/* Barre d'action — desktop/tablette (STICKY) */}
+          {/* Barre d'action — desktop/tablette (STICKY, pour copier) */}
           {selectedVerses.length > 0 && (
             <div
               className="hidden md:block sticky z-40 mb-3"
@@ -587,9 +570,7 @@ export default function Reading() {
                           style={{ scrollMarginTop: stickyOffset }}
                           className={`relative cursor-pointer px-3 pt-6 sm:pt-7 pb-2 sm:pb-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder}`}
                         >
-                          <span
-                            className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-                          >
+                          <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
                             {isSelected && (
                               <Check size={14} className={`inline ml-1 ${isDark ? 'text-blue-300' : 'text-blue-600'}`} />
@@ -623,7 +604,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Overlays Livres & Chapitres… (inchangés) */}
+          {/* Overlay Livres */}
           {showBookPicker && (
             <div className="fixed inset-0 z-50">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowBookPicker(false)} aria-hidden="true" />
@@ -674,13 +655,10 @@ export default function Reading() {
             </div>
           )}
 
+          {/* Overlay Chapitres */}
           {showChapterPicker && selectedBook && (
             <div className="fixed inset-0 z-50">
-              <div
-                className="absolute inset-0 bg-black/60"
-                onClick={() => setShowChapterPicker(false)}
-                aria-hidden="true"
-              />
+              <div className="absolute inset-0 bg-black/60" onClick={() => setShowChapterPicker(false)} aria-hidden="true" />
               <div className={`absolute inset-0 ${isDark ? 'bg-gray-900' : 'bg-white'} p-4 overflow-y-auto`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
@@ -717,7 +695,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Barre flottante (mobile) */}
+          {/* Barre flottante (mobile) pour copier */}
           {selectedVerses.length > 0 && (
             <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
               <div className={`${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
