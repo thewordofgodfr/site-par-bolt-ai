@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { highlightText } from '../utils/searchUtils';
-import { saveSlot as saveQuickSlot } from '../utils/readingSlots';
+import { saveSlot as saveQuickSlot } from '../services/readingSlots';
 
 type Grouped = {
   bookId: string;
@@ -326,3 +326,4 @@ export default function Search() {
     </div>
   );
 }
+
