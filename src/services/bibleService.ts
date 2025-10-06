@@ -213,7 +213,7 @@ export async function getRandomVerse(language: Language): Promise<BibleVerse> {
 export async function getChapter(book: string, chapter: number, language: Language): Promise<BibleChapter> {
   try {
     const bookData = await loadBook(book, language);
-    if (!bookData) {
+  if (!bookData) {
       throw new Error(`Book ${book} not found`);
     }
 
@@ -312,31 +312,41 @@ export async function searchInBible(searchTerm: string, language: Language): Pro
 }
 
 /* ============================
-   Warm-up / Pré-chauffage (amélioré)
+   Warm-up / Pré-chauffage (avec pause & limite)
    ============================ */
 
-// Helper idle (sans casser SSR)
-const idle = (cb: () => void) => {
+// Helper idle (sans SSR)
+type IdleDeadline = { timeRemaining: () => number };
+type IdleCb = (deadline?: IdleDeadline) => void;
+const idle = (cb: IdleCb) => {
   if (typeof window !== 'undefined' && (window as any).requestIdleCallback) {
-    (window as any).requestIdleCallback(cb);
+    (window as any).requestIdleCallback(cb as any);
   } else {
-    setTimeout(cb, 250);
+    setTimeout(() => cb({ timeRemaining: () => 0 }), 250);
   }
 };
 
+// État global du warmup (pausable)
 let warmed: Record<Language, boolean> = { fr: false, en: false };
+let warmupEnabled = true;
+export function pauseWarmup() { warmupEnabled = false; }
+export function resumeWarmup() { warmupEnabled = true; }
 
 type WarmOptions = {
-  /** Combien de livres par lot (8 à 12 est un bon choix) */
+  /** Livres par lot (petit = moins d'impact UI) */
   batchSize?: number;
-  /** Combien de livres au total à précharger (66 pour tout) */
+  /** Livres total à charger */
   maxBooks?: number;
-  /** Terme(s) de recherche à préchauffer (mise en cache sessionStorage) */
+  /** Termes à préchauffer (cache de recherche) */
   searchTerms?: string[];
+  /** Délai avant de lancer la pré-recherche (ms) */
+  presearchDelayMs?: number;
+  /** Max de termes à préchauffer */
+  presearchMaxTerms?: number;
 };
 
 /**
- * Précharge les livres par paquets sans bloquer l'UI.
+ * Précharge les livres par paquets, avec une petite file d'attente (faible concurrence).
  */
 function preloadBooksInBatches(language: Language, batchSize: number, maxBooks: number): Promise<void> {
   const names = bibleBooks.map(b => b.name).slice(0, Math.max(0, maxBooks));
@@ -344,69 +354,85 @@ function preloadBooksInBatches(language: Language, batchSize: number, maxBooks: 
 
   return new Promise<void>(resolve => {
     const step = () => {
+      if (!warmupEnabled) return resolve(); // stop net si pause
       if (index >= names.length) return resolve();
 
       const slice = names.slice(index, index + batchSize);
       index += batchSize;
 
-      // Charge ce lot en parallèle
-      Promise.all(slice.map(name => loadBook(name, language).catch(() => null)))
-        .finally(() => {
-          // Planifie le lot suivant pendant une période d'inactivité
-          idle(step);
-        });
+      // Charge ce lot en SÉRIE (au lieu de Promise.all) pour lisser l'impact CPU/JSON.parse
+      const loadNext = async (i: number): Promise<void> => {
+        if (i >= slice.length || !warmupEnabled) return;
+        try { await loadBook(slice[i], language); } catch {}
+        // micro-pause entre 2 livres pour laisser respirer l'UI
+        await new Promise(r => setTimeout(r, 10));
+        return loadNext(i + 1);
+      };
+
+      loadNext(0).finally(() => {
+        // Planifie le lot suivant pendant une période idle
+        idle(step);
+      });
     };
 
-    // Démarre le premier lot pendant une période idle
+    // Démarre pendant une période idle
     idle(step);
   });
 }
 
 /**
- * Pré-chauffe le cache de recherche (sessionStorage) pour certains mots fréquents.
- * Utilise la vraie recherche, donc les résultats seront instantanés ensuite.
+ * Pré-chauffe le cache de recherche (sessionStorage) pour quelques mots fréquents.
+ * Très léger : 1 terme toutes ~1.2s, stoppable si l'utilisateur navigue.
  */
-function prewarmSearchCache(language: Language, terms: string[]) {
+function prewarmSearchCache(language: Language, terms: string[], maxTerms: number) {
+  const list = terms.slice(0, Math.max(0, maxTerms));
   let i = 0;
+
   const run = () => {
-    if (i >= terms.length) return;
-    const term = terms[i++];
+    if (!warmupEnabled) return;         // stop si pause
+    if (i >= list.length) return;       // terminé
+
+    const term = list[i++];
     searchInBible(term, language).catch(() => { /* silencieux */ });
-    idle(run);
+
+    // espace entre 2 recherches pour ne pas impacter l'UI
+    setTimeout(() => idle(run), 1200);
   };
+
   idle(run);
 }
 
 /**
- * Version améliorée : précharge par lots + préchauffe des recherches courantes.
+ * Version adoucie : petits lots + pause possible + pré-recherche limitée.
  */
 export function warmBibleCache(language: Language, opts: WarmOptions = {}) {
   if (warmed[language]) return;
   warmed[language] = true;
 
   const {
-    batchSize = 10,           // ← 10 livres par lot
-    maxBooks = 66,            // ← tout précharger en arrière-plan
-    searchTerms,              // ← si pas fourni, valeurs par défaut ci-dessous
+    batchSize = 6,           // ← petits lots (moins d'impact UI)
+    maxBooks = 66,           // ← précharge tout en arrière-plan
+    searchTerms,
+    presearchDelayMs = 3000, // ← on attend 3s avant la pré-recherche
+    presearchMaxTerms = 3,   // ← seulement 3 termes (ex: "amour", "Dieu", "Jésus")
   } = opts;
 
-  // Valeurs par défaut pour les recherches courantes
-  const defaultTermsFr = ['amour', 'Dieu', 'Jésus', 'foi', 'esprit', 'paix', 'peur'];
-  const defaultTermsEn = ['love', 'God', 'Jesus', 'faith', 'spirit', 'peace', 'fear'];
+  const defaultTermsFr = ['amour', 'Dieu', 'Jésus', 'foi', 'paix', 'esprit'];
+  const defaultTermsEn = ['love', 'God', 'Jesus', 'faith', 'peace', 'spirit'];
   const terms = searchTerms ?? (language === 'fr' ? defaultTermsFr : defaultTermsEn);
 
-  // 1) Charge d'abord les comptes de versets (utile ailleurs)
+  // 1) Compteurs de versets d'abord
   idle(async () => {
     try { await loadVerseCounts(language); } catch {}
 
-    // 2) Précharge les livres par paquets (n’impacte pas l’UI)
+    // 2) Précharge des livres par petits lots (en série)
     preloadBooksInBatches(language, batchSize, maxBooks)
       .catch(() => { /* silencieux */ });
 
-    // 3) Après un petit délai, lance le préchauffage du cache de recherche
+    // 3) Pré-recherche ultra légère et différée
     setTimeout(() => {
-      prewarmSearchCache(language, terms);
-    }, 1200);
+      if (!warmupEnabled) return;
+      prewarmSearchCache(language, terms, presearchMaxTerms);
+    }, presearchDelayMs);
   });
 }
-
