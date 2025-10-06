@@ -315,11 +315,38 @@ export default function Reading() {
             >
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
                 <div className="flex items-center justify-between gap-2">
-                  {/* Titre : seul "Chapitre N" cliquable sur mobile */}
-                  <h2
-                    className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-1`}
-                  >
-                    <span className="truncate">{getBookName(selectedBook)} •</span>
+                  
+                <h2
+  className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-2`}
+>
+  <span className="truncate">{getBookName(selectedBook)} •</span>
+
+  {/* Mobile : "Chapitre N" en bouton bleu cliquable */}
+  <button
+    type="button"
+    onClick={() => setShowChapterPicker(true)}
+    aria-expanded={showChapterPicker}
+    className="md:hidden inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold bg-blue-600 text-white shadow hover:bg-blue-500 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400"
+    title={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
+    aria-label={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
+  >
+    {t('chapter')} {selectedChapter}
+    <ChevronDown className="w-3 h-3 opacity-90" />
+  </button>
+
+  {/* Desktop : affichage simple */}
+  <span className="hidden md:inline">
+    {t('chapter')} {selectedChapter}
+  </span>
+</h2>
+
+
+  {/* Desktop : affichage simple */}
+  <span className="hidden md:inline">
+    {t('chapter')} {selectedChapter}
+  </span>
+</h2>
+                   
 
                     {/* Mobile : bouton cliquable */}
                     <button
