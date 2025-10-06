@@ -254,11 +254,7 @@ export default function Search() {
             )}
           </div>
 
-          {total > 0 && !loading && (
-            <div className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {state.settings.language === 'fr'
-                ? 'Astuce : touchez un verset pour l’ouvrir dans Lecture.'
-                : 'Tip: tap a verse to open it in Reading.'}
+         {/* (Le petit message "Astuce / Tip" a été supprimé) */}
             </div>
           )}
         </div>
