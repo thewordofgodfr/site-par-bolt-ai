@@ -273,7 +273,7 @@ export default function Reading() {
     if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
     const t = e.touches[0];
     const dx = t.clientX - swipeStart.current.x;
-    the const dy = t.clientY - swipeStart.current.y;
+    const dy = t.clientY - swipeStart.current.y; // ✅ correction ici
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
@@ -637,5 +637,4 @@ export default function Reading() {
     </div>
   );
 }
-
 
