@@ -13,28 +13,28 @@ export default function QuickSlotsHelp() {
       intro:
         'Ces 4 boutons, alignés à droite du sélecteur Livre/Chapitre, servent à revenir instantanément sur vos lectures fréquentes.',
       items: [
-        '🔎 : mène au dernier verset ouvert depuis la recherche. Ce bouton n’écrase jamais 1/2/3.',
+        '🔎 : mène au dernier verset ouvert depuis la recherche OU depuis « Verset aléatoire » (Accueil). Ce bouton n’écrase jamais 1/2/3.',
         '1 • 2 • 3 : mémoires personnelles.',
         'Si la mémoire est vide : appuyer sur 1/2/3 enregistre l’endroit actuel.',
         'Quand vous utilisez 1/2/3, ce numéro devient “actif” et se met à jour automatiquement pendant que vous changez de livre/chapitre.',
         'Pour mémoriser un autre endroit : appuyez sur 1/2/3 (pour l’activer), allez où vous voulez — c’est enregistré automatiquement.',
         'Les mémoires sont gardées uniquement sur cet appareil (stockage local), et fonctionnent en français ou en anglais.',
       ],
-      tip: 'Astuce : 🔎 est pratique pour reprendre exactement sur un verset trouvé via la recherche, sans toucher à vos mémoires 1/2/3.',
+      tip: 'Astuce : utilisez 🔎 pour reprendre un verset trouvé via la recherche ou celui de « Verset aléatoire », sans toucher à vos mémoires 1/2/3.',
     },
     en: {
       title: 'Reading shortcuts (🔎 • 1 • 2 • 3)',
       intro:
         'These 4 buttons, aligned to the right of the Book/Chapter selector, let you jump back to frequent readings instantly.',
       items: [
-        '🔎 : jumps to the last verse you opened from search. It never overwrites 1/2/3.',
-        '1 • 2 • 3 : personal memories (bookmarks).',
+        '🔎 : jumps to the last verse you opened from search OR from “Random verse” (Home). It never overwrites 1/2/3.',
+        '1 • 2 • 3: personal memories (bookmarks).',
         'If the memory is empty: tapping 1/2/3 saves your current place.',
         'When you use 1/2/3, that number becomes “active” and auto-updates while you navigate between books/chapters.',
         'To save a different place: tap 1/2/3 (to activate it), go where you want — it will save automatically.',
         'Memories are stored only on this device (local storage) and work in French or English.',
       ],
-      tip: 'Tip: use 🔎 to resume exactly where a search took you, without touching your 1/2/3 memories.',
+      tip: 'Tip: use 🔎 to resume a verse from search or from “Random verse” without touching your 1/2/3 memories.',
     },
   }[lang];
 
