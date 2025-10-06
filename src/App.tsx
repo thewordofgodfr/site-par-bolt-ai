@@ -14,17 +14,17 @@ function AppContent() {
   // Pré-chauffage (léger) + autre langue en tâche de fond
   useEffect(() => {
     warmBibleCache(state.settings.language, {
-      batchSize: 4,
+      batchSize: 6,
       maxBooks: 66,
       presearchDelayMs: 3000,
-      presearchMaxTerms: 0,
+      presearchMaxTerms: 3,
     });
     const other = state.settings.language === 'fr' ? 'en' : 'fr';
     warmBibleCache(other, {
-      batchSize: 4,
+      batchSize: 6,
       maxBooks: 66,
       presearchDelayMs: 5000,
-      presearchMaxTerms: 0,
+      presearchMaxTerms: 2,
     });
   }, [state.settings.language]);
 
