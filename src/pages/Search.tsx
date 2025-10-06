@@ -171,8 +171,18 @@ export default function Search() {
 
   // Quand on ouvre un verset en Lecture : on SAUVE le scroll
   const openInReading = (v: BibleVerse) => {
-    sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
-    navigateToVerse(v.book, v.chapter, v.verse);
+  sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
+
+  // NEW: on mémorise la dernière lecture venant de la recherche dans le slot "S"
+  saveReadingSlot('S', {
+    book: v.book,
+    chapter: v.chapter,
+    verse: v.verse,
+    language: state.settings.language,
+  });
+
+  navigateToVerse(v.book, v.chapter, v.verse);
+
   };
 
   const total = results.length;
