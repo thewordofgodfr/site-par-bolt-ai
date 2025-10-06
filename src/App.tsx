@@ -14,7 +14,7 @@ function AppContent() {
   // Pré-chauffage (léger) + autre langue en tâche de fond
   useEffect(() => {
     warmBibleCache(state.settings.language, {
-      batchSize: 6,
+      batchSize: 4,
       maxBooks: 66,
       presearchDelayMs: 3000,
       presearchMaxTerms: 3,
