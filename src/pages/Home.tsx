@@ -4,6 +4,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { getRandomVerse, copyToClipboard, warmBibleCache } from '../services/bibleService';
 import { BibleVerse } from '../types/bible';
 import { RefreshCw, Copy, Check } from 'lucide-react';
+import { saveSlot as saveQuickSlot } from '../services/readingSlots';
 
 export default function Home() {
   const { state, navigateToVerse } = useApp();
@@ -26,10 +27,13 @@ export default function Home() {
     }
   };
 
+  // Ouvrir le verset aléatoire en Lecture + enregistrer dans la loupe (slot 0)
   const handleVerseClick = () => {
-    if (verse) {
-      navigateToVerse(verse.book, verse.chapter, verse.verse);
-    }
+    if (!verse) return;
+    try {
+      saveQuickSlot(0, { book: verse.book, chapter: verse.chapter, verse: verse.verse });
+    } catch {}
+    navigateToVerse(verse.book, verse.chapter, verse.verse);
   };
 
   const handleCopyVerse = async () => {
@@ -50,7 +54,8 @@ export default function Home() {
 
   // Clic sur la citation fixe -> ouvrir la lecture de Jérémie 23
   const openJeremiah23 = () => {
-    // utiliser l'identifiant interne anglais du livre
+    // on enregistre aussi dans la loupe
+    try { saveQuickSlot(0, { book: 'Jeremiah', chapter: 23 }); } catch {}
     navigateToVerse('Jeremiah', 23);
   };
 
@@ -143,3 +148,4 @@ export default function Home() {
     </div>
   );
 }
+
