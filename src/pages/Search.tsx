@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { useTranslation } from '../hooks/useTranslation';
 import { getBibleBooks, searchInBible } from '../services/bibleService';
 import type { BibleVerse } from '../types/bible';
 import {
@@ -20,7 +19,6 @@ type Grouped = {
 
 export default function Search() {
   const { state, navigateToVerse } = useApp();
-  const { t } = useTranslation();
   const isDark = state.settings.theme === 'dark';
 
   // --- Clés de persistance ---
@@ -253,10 +251,6 @@ export default function Search() {
               </div>
             )}
           </div>
-
-         //* (Le petit message "Astuce / Tip" a été supprimé) */
-            </div>
-        
         </div>
 
         {/* Groupes par livre */}
@@ -331,4 +325,3 @@ export default function Search() {
     </div>
   );
 }
-
