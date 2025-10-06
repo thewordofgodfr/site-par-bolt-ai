@@ -1,3 +1,4 @@
+import QuickSlotsHelp from '../components/QuickSlotsHelp';
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
