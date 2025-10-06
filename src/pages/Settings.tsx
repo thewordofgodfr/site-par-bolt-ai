@@ -171,7 +171,9 @@ export default function Settings() {
               </div>
             </div>
           </div>
-
+          <div className="mt-6">
+  <QuickSlotsHelp />
+</div>
           {/* Settings Info */}
           <div className={`mt-8 ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
             <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
