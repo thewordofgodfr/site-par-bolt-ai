@@ -17,14 +17,14 @@ function AppContent() {
       batchSize: 4,
       maxBooks: 66,
       presearchDelayMs: 3000,
-      presearchMaxTerms: 3,
+      presearchMaxTerms: 0,
     });
     const other = state.settings.language === 'fr' ? 'en' : 'fr';
     warmBibleCache(other, {
-      batchSize: 6,
+      batchSize: 4,
       maxBooks: 66,
       presearchDelayMs: 5000,
-      presearchMaxTerms: 2,
+      presearchMaxTerms: 0,
     });
   }, [state.settings.language]);
 
