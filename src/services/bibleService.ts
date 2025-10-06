@@ -312,7 +312,7 @@ export async function searchInBible(searchTerm: string, language: Language): Pro
 }
 
 /* ============================
-   Warm-up / Pré-chauffage
+   Warm-up / Pré-chauffage (amélioré)
    ============================ */
 
 // Helper idle (sans casser SSR)
@@ -320,24 +320,93 @@ const idle = (cb: () => void) => {
   if (typeof window !== 'undefined' && (window as any).requestIdleCallback) {
     (window as any).requestIdleCallback(cb);
   } else {
-    setTimeout(cb, 500);
+    setTimeout(cb, 250);
   }
 };
 
 let warmed: Record<Language, boolean> = { fr: false, en: false };
 
-export function warmBibleCache(language: Language) {
+type WarmOptions = {
+  /** Combien de livres par lot (8 à 12 est un bon choix) */
+  batchSize?: number;
+  /** Combien de livres au total à précharger (66 pour tout) */
+  maxBooks?: number;
+  /** Terme(s) de recherche à préchauffer (mise en cache sessionStorage) */
+  searchTerms?: string[];
+};
+
+/**
+ * Précharge les livres par paquets sans bloquer l'UI.
+ */
+function preloadBooksInBatches(language: Language, batchSize: number, maxBooks: number): Promise<void> {
+  const names = bibleBooks.map(b => b.name).slice(0, Math.max(0, maxBooks));
+  let index = 0;
+
+  return new Promise<void>(resolve => {
+    const step = () => {
+      if (index >= names.length) return resolve();
+
+      const slice = names.slice(index, index + batchSize);
+      index += batchSize;
+
+      // Charge ce lot en parallèle
+      Promise.all(slice.map(name => loadBook(name, language).catch(() => null)))
+        .finally(() => {
+          // Planifie le lot suivant pendant une période d'inactivité
+          idle(step);
+        });
+    };
+
+    // Démarre le premier lot pendant une période idle
+    idle(step);
+  });
+}
+
+/**
+ * Pré-chauffe le cache de recherche (sessionStorage) pour certains mots fréquents.
+ * Utilise la vraie recherche, donc les résultats seront instantanés ensuite.
+ */
+function prewarmSearchCache(language: Language, terms: string[]) {
+  let i = 0;
+  const run = () => {
+    if (i >= terms.length) return;
+    const term = terms[i++];
+    searchInBible(term, language).catch(() => { /* silencieux */ });
+    idle(run);
+  };
+  idle(run);
+}
+
+/**
+ * Version améliorée : précharge par lots + préchauffe des recherches courantes.
+ */
+export function warmBibleCache(language: Language, opts: WarmOptions = {}) {
   if (warmed[language]) return;
   warmed[language] = true;
 
-  // Charge d'abord les comptes de versets, puis quelques livres pour amorcer le cache/CDN
+  const {
+    batchSize = 10,           // ← 10 livres par lot
+    maxBooks = 66,            // ← tout précharger en arrière-plan
+    searchTerms,              // ← si pas fourni, valeurs par défaut ci-dessous
+  } = opts;
+
+  // Valeurs par défaut pour les recherches courantes
+  const defaultTermsFr = ['amour', 'Dieu', 'Jésus', 'foi', 'esprit', 'paix', 'peur'];
+  const defaultTermsEn = ['love', 'God', 'Jesus', 'faith', 'spirit', 'peace', 'fear'];
+  const terms = searchTerms ?? (language === 'fr' ? defaultTermsFr : defaultTermsEn);
+
+  // 1) Charge d'abord les comptes de versets (utile ailleurs)
   idle(async () => {
     try { await loadVerseCounts(language); } catch {}
 
-    const names = bibleBooks.map(b => b.name);
-    const sample = names.slice(0, 8); // précharge ~8 livres
-    for (const name of sample) {
-      try { await loadBook(name, language); } catch {}
-    }
+    // 2) Précharge les livres par paquets (n’impacte pas l’UI)
+    preloadBooksInBatches(language, batchSize, maxBooks)
+      .catch(() => { /* silencieux */ });
+
+    // 3) Après un petit délai, lance le préchauffage du cache de recherche
+    setTimeout(() => {
+      prewarmSearchCache(language, terms);
+    }, 1200);
   });
 }
+
