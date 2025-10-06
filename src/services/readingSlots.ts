@@ -1,4 +1,4 @@
-// src/utils/readingSlots.ts
+// src/services/readingSlots.ts
 export type QuickSlot = { book: string; chapter: number; verse?: number; updatedAt: number } | null;
 
 const KEY = 'twog:reading:slots:v1';
