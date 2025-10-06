@@ -8,11 +8,10 @@ import {
   Book,
   ChevronLeft,
   ChevronRight,
-  BookOpen,
   Copy as CopyIcon,
   Check
 } from 'lucide-react';
-import { readSlot as readQuickSlot, saveSlot as saveQuickSlot, clearSlot as clearQuickSlot, type QuickSlot } from '../utils/readingSlots';
+import { readSlot as readQuickSlot, saveSlot as saveQuickSlot, clearSlot as clearQuickSlot, type QuickSlot } from '../services/readingSlots';
 
 export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
@@ -294,14 +293,14 @@ export default function Reading() {
      ========================= */
   const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
   useEffect(() => {
-    try { setQuickSlots(readQuickSlots()); } catch {}
+    try { setQuickSlots(getAllSlots()); } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function readQuickSlots(): QuickSlot[] {
+  function getAllSlots(): QuickSlot[] {
     return [0,1,2,3].map(i => readQuickSlot(i));
   }
-  function refreshSlots() { setQuickSlots(readQuickSlots()); }
+  function refreshSlots() { setQuickSlots(getAllSlots()); }
 
   function jumpToSlot(i: number) {
     const slot = readQuickSlot(i);
@@ -324,7 +323,7 @@ export default function Reading() {
     saveReadingPosition(book.name, slot.chapter);
   }
 
-  function clearSlot(i: number) {
+  function clearSlotLocal(i: number) {
     clearQuickSlot(i);
     refreshSlots();
   }
@@ -336,7 +335,7 @@ export default function Reading() {
     longPressed.current = false;
     longPressTimer.current = window.setTimeout(() => {
       longPressed.current = true;
-      clearSlot(i);
+      clearSlotLocal(i);
     }, 600); // 600ms press = clear
   };
   const cancelLongPress = () => {
