@@ -36,7 +36,7 @@ export default function Reading() {
     return () => window.removeEventListener('resize', compute);
   }, []);
 
-  const [books] = useState<BibleBook[]>(getBibleBooks());
+  const [books] = useState(getBibleBooks());
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
@@ -50,8 +50,8 @@ export default function Reading() {
   const [copiedKey, setCopiedKey] = useState<string>('');
 
   // Overlays
-  const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
-  const [showChapterPicker, setShowChapterPicker] = useState<boolean>(false);
+  const [showBookPicker, setShowBookPicker] = useState(false);
+  const [showChapterPicker, setShowChapterPicker] = useState(false);
 
   // Hint swipe (une seule fois par session)
   const [showSwipeHint, setShowSwipeHint] = useState(false);
@@ -86,8 +86,6 @@ export default function Reading() {
     setSelectedVerses([]);
     setHighlightedVerse(null);
     setShowBookPicker(false);
-
-    // Charge le chap.1 du nouveau livre et remonte en haut instantanément
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
     try { window.scrollTo({ top: 0 }); } catch {}
@@ -115,7 +113,7 @@ export default function Reading() {
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
-  // Helper pour résoudre un nom de livre (FR/EN/ID interne)
+  // Helper pour résoudre un nom de livre
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
     let found = books.find(b => b.name === bookIdentifier);
     if (found) return found;
@@ -126,7 +124,7 @@ export default function Reading() {
     return null;
   };
 
-  // Navigation contextuelle - s'exécute une seule fois au montage
+  // Navigation contextuelle - une fois au montage
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
   useEffect(() => {
     if (!hasLoadedContext && state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
@@ -153,7 +151,7 @@ export default function Reading() {
     }
   }, [state.settings.language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Chargement initial - uniquement si pas de contexte
+  // Chargement initial (si pas de contexte)
   useEffect(() => {
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) return;
 
@@ -196,7 +194,7 @@ export default function Reading() {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
 
-  // Compactage de plages (ex: 2,3,4,7 => 2-4,7)
+  // Compactage de plages
   const compressRanges = (nums: number[]) => {
     if (nums.length === 0) return '';
     const sorted = [...nums].sort((a, b) => a - b);
@@ -213,7 +211,7 @@ export default function Reading() {
     return parts.join(',');
   };
 
-  // Copie : ne plus répéter le numéro du verset dans chaque ligne
+  // Copie sélection
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -237,7 +235,6 @@ export default function Reading() {
   // Swipe chapitres (mobile)
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
-
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
@@ -268,7 +265,7 @@ export default function Reading() {
      Quick Slots (MOBILE FIRST)
      ========================= */
   const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
-  const [activeSlot, setActiveSlot] = useState<number | null>(null); // 1,2,3 -> suivi auto ; 0=search (jamais actif)
+  const [activeSlot, setActiveSlot] = useState<number | null>(null); // 1/2/3 suivi auto ; 0=search (désactivé)
 
   function readAllSlots(): QuickSlot[] {
     return [0, 1, 2, 3].map(i => readQuickSlot(i));
@@ -293,8 +290,9 @@ export default function Reading() {
   function jumpToSlot(i: number) {
     const slot = readQuickSlot(i);
 
-    // Slot recherche (0) : on n'active pas le suivi auto
     if (i === 0) {
+      // Loupe = désactiver le suivi auto pour ne jamais écraser 1/2/3
+      setActiveSlot(null);
       if (!slot) return;
       const b = resolveBook(slot.book);
       if (!b) return;
@@ -311,7 +309,7 @@ export default function Reading() {
     // Slots 1/2/3 => deviennent ACTIFS
     setActiveSlot(i);
 
-    // Si vide : on mémorise l'emplacement courant et on reste où on est
+    // Si vide : mémorise l'emplacement courant
     if (!slot) {
       if (!selectedBook) return;
       saveQuickSlot(i, { book: selectedBook.name, chapter: selectedChapter });
@@ -319,7 +317,7 @@ export default function Reading() {
       return;
     }
 
-    // Sinon : on saute à la position mémorisée
+    // Sinon : sauter à la position mémorisée
     const book = resolveBook(slot.book);
     if (!book) return;
     setSelectedBook(book);
@@ -339,9 +337,9 @@ export default function Reading() {
     const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
     let cls = '';
     if (i === 0) {
-      // Loupe (recherche)
+      // Loupe (recherche) — fond blanc/bordure indigo
       cls = isDark
-        ? `border border-indigo-400/60 text-indigo-200 ${filled ? '' : ''}`
+        ? `border border-indigo-400/60 text-indigo-200`
         : `bg-white border border-indigo-300 text-indigo-700`;
     } else {
       cls = filled
@@ -432,7 +430,7 @@ export default function Reading() {
                     {[0, 1, 2, 3].map(renderSlotBtn)}
                   </div>
 
-                  {/* Actions desktop (choix livre/chapitre + navigation) */}
+                  {/* Actions desktop */}
                   <div className="hidden md:flex items-center gap-2 ml-auto">
                     <button
                       onClick={() => setShowBookPicker(true)}
@@ -589,7 +587,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Overlay Livres (desktop & mobile) */}
+          {/* Overlay Livres */}
           {showBookPicker && (
             <div className="fixed inset-0 z-50">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowBookPicker(false)} aria-hidden="true" />
@@ -640,7 +638,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Overlay Chapitres (desktop & mobile) */}
+          {/* Overlay Chapitres */}
           {showChapterPicker && selectedBook && (
             <div className="fixed inset-0 z-50">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowChapterPicker(false)} aria-hidden="true" />
