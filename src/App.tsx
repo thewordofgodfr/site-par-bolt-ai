@@ -6,9 +6,17 @@ import Reading from './pages/Reading';
 import Search from './pages/Search';
 import Settings from './pages/Settings';
 import About from './pages/About';
+import { warmBibleCache } from './services/bibleService';
 
 function AppContent() {
   const { state } = useApp();
+
+  // Pré-chauffage du cache Bible (langue courante + autre langue en tâche de fond)
+  useEffect(() => {
+    warmBibleCache(state.settings.language);
+    const other = state.settings.language === 'fr' ? 'en' : 'fr';
+    warmBibleCache(other);
+  }, [state.settings.language]);
 
   // Titre dynamique + thème + attribut lang
   useEffect(() => {
