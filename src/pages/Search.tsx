@@ -254,7 +254,7 @@ export default function Search() {
             )}
           </div>
 
-         {/* (Le petit message "Astuce / Tip" a été supprimé) */}
+         //* (Le petit message "Astuce / Tip" a été supprimé) */
             </div>
           )}
         </div>
