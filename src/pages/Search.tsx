@@ -256,7 +256,7 @@ export default function Search() {
 
          //* (Le petit message "Astuce / Tip" a été supprimé) */
             </div>
-          )}
+        
         </div>
 
         {/* Groupes par livre */}
