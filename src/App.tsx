@@ -6,17 +6,36 @@ import Reading from './pages/Reading';
 import Search from './pages/Search';
 import Settings from './pages/Settings';
 import About from './pages/About';
-import { warmBibleCache } from './services/bibleService';
+import { warmBibleCache, pauseWarmup, resumeWarmup } from './services/bibleService';
 
 function AppContent() {
   const { state } = useApp();
 
-  // Pré-chauffage du cache Bible (langue courante + autre langue en tâche de fond)
+  // Pré-chauffage (léger) + autre langue en tâche de fond
   useEffect(() => {
-    warmBibleCache(state.settings.language);
+    warmBibleCache(state.settings.language, {
+      batchSize: 6,
+      maxBooks: 66,
+      presearchDelayMs: 3000,
+      presearchMaxTerms: 3,
+    });
     const other = state.settings.language === 'fr' ? 'en' : 'fr';
-    warmBibleCache(other);
+    warmBibleCache(other, {
+      batchSize: 6,
+      maxBooks: 66,
+      presearchDelayMs: 5000,
+      presearchMaxTerms: 2,
+    });
   }, [state.settings.language]);
+
+  // Met en pause le warm-up dès qu’on quitte l’accueil (clics menus + réactifs)
+  useEffect(() => {
+    if (state.currentPage === 'home') {
+      resumeWarmup();
+    } else {
+      pauseWarmup();
+    }
+  }, [state.currentPage]);
 
   // Titre dynamique + thème + attribut lang
   useEffect(() => {
@@ -61,7 +80,7 @@ function AppContent() {
     }
   }, []);
 
-  // Reviens TJS en haut quand on change de "page" (Home / Search / Reading / Settings / About)
+  // Reviens toujours en haut quand on change de page
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0 });
@@ -106,3 +125,4 @@ export default function App() {
     </AppProvider>
   );
 }
+
