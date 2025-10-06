@@ -1,56 +1,36 @@
-// services/readingSlots.ts
-import type { Language } from '../types/bible';
+// src/utils/readingSlots.ts
+export type QuickSlot = { book: string; chapter: number; verse?: number; updatedAt: number } | null;
 
-export type SlotId = 'S' | '1' | '2' | '3';
+const KEY = 'twog:reading:slots:v1';
 
-export type ReadingSlot = {
-  book: string;       // id interne (ex: 'Matthew')
-  chapter: number;    // >= 1
-  verse?: number;     // optionnel
-  language: Language; // 'fr' | 'en'
-  updatedAt: number;  // Date.now()
-};
-
-const LS_KEY = 'twog:reading:slots:v1';
-
-type SlotsState = Record<SlotId, ReadingSlot | null>;
-
-function readAll(): SlotsState {
+export function getSlots(): QuickSlot[] {
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { S: null, '1': null, '2': null, '3': null };
-    const parsed = JSON.parse(raw);
-    return { S: null, '1': null, '2': null, '3': null, ...parsed };
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return [null, null, null, null];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [null, null, null, null];
+    return [0, 1, 2, 3].map(i => (arr[i] ?? null));
   } catch {
-    return { S: null, '1': null, '2': null, '3': null };
+    return [null, null, null, null];
   }
 }
 
-function writeAll(next: SlotsState) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-  } catch {}
+function saveSlots(slots: QuickSlot[]) {
+  try { localStorage.setItem(KEY, JSON.stringify(slots)); } catch {}
 }
 
-export function getReadingSlots(): SlotsState {
-  return readAll();
+export function readSlot(i: number): QuickSlot {
+  return getSlots()[i] ?? null;
 }
 
-export function getReadingSlot(id: SlotId): ReadingSlot | null {
-  return readAll()[id] ?? null;
+export function saveSlot(i: number, data: { book: string; chapter: number; verse?: number }) {
+  const slots = getSlots();
+  slots[i] = { ...data, updatedAt: Date.now() };
+  saveSlots(slots);
 }
 
-export function saveReadingSlot(
-  id: SlotId,
-  data: { book: string; chapter: number; verse?: number; language: Language }
-) {
-  const all = readAll();
-  all[id] = { ...data, updatedAt: Date.now() };
-  writeAll(all);
-}
-
-export function clearReadingSlot(id: SlotId) {
-  const all = readAll();
-  all[id] = null;
-  writeAll(all);
+export function clearSlot(i: number) {
+  const slots = getSlots();
+  slots[i] = null;
+  saveSlots(slots);
 }
