@@ -84,7 +84,7 @@ export default function Reading() {
     setHighlightedVerse(null);
     setShowBookPicker(false);
 
-    // Charge le chap.1 du nouveau livre et remonte en haut
+    // Charge le chap.1 du nouveau livre et remonte en haut instantanément
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
     setShowRestoredNotification(false);
@@ -273,7 +273,7 @@ export default function Reading() {
     if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
     const t = e.touches[0];
     const dx = t.clientX - swipeStart.current.x;
-    const dy = t.clientY - swipeStart.current.y; // ✅ correction ici
+    const dy = t.clientY - swipeStart.current.y;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
@@ -315,11 +315,27 @@ export default function Reading() {
             >
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
                 <div className="flex items-center justify-between gap-2">
-                  {/* Titre : Livre + "Chapitre N" (mobile = bouton bleu, desktop = texte) */}
+                  {/* Titre : sur mobile le nom du livre ET "Chapitre N" sont des boutons bleus */}
                   <h2
                     className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-2`}
                   >
-                    <span className="truncate">{getBookName(selectedBook)} •</span>
+                    {/* Mobile : nom du livre cliquable (ouvre le picker livres) */}
+                    <button
+                      type="button"
+                      onClick={() => setShowBookPicker(true)}
+                      aria-expanded={showBookPicker}
+                      className="md:hidden inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold bg-blue-600 text-white shadow hover:bg-blue-500 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 truncate max-w-[55vw]"
+                      title={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+                      aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+                    >
+                      {getBookName(selectedBook)}
+                      <ChevronDown className="w-3 h-3 opacity-90" />
+                    </button>
+
+                    {/* Desktop : nom du livre en texte + puce */}
+                    <span className="hidden md:inline truncate">
+                      {getBookName(selectedBook)} •
+                    </span>
 
                     {/* Mobile : "Chapitre N" cliquable en bouton bleu */}
                     <button
@@ -334,7 +350,7 @@ export default function Reading() {
                       <ChevronDown className="w-3 h-3 opacity-90" />
                     </button>
 
-                    {/* Desktop : simple libellé non cliquable */}
+                    {/* Desktop : "Chapitre N" en simple texte */}
                     <span className="hidden md:inline">
                       {t('chapter')} {selectedChapter}
                     </span>
@@ -394,15 +410,7 @@ export default function Reading() {
                     </div>
                   </div>
 
-                  {/* Icône Livre sur mobile pour ouvrir le sélecteur */}
-                  <button
-                    onClick={() => setShowBookPicker(true)}
-                    className="md:hidden p-1.5 rounded-md bg-blue-600 text-white active:scale-95"
-                    title={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
-                    aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                  </button>
+                  {/* Icône Livre sur mobile — supprimée */}
                 </div>
               </div>
             </div>
