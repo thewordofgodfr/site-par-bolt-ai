@@ -416,22 +416,33 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Barre d'action — desktop/tablette */}
+          {/* Barre d'action — desktop/tablette (STICKY) */}
           {selectedVerses.length > 0 && (
-            <div className={`hidden sm:flex mb-4 rounded-lg p-3 items-center justify-between ${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow`}>
-              <div className="text-sm">
-                {state.settings.language === 'fr'
-                  ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
-                  : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
-              </div>
-              <div className="flex items-center space-x-2">
-                <button onClick={copySelection} className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
-                  <CopyIcon size={16} className="mr-2" />
-                  {state.settings.language === 'fr' ? 'Copier la sélection' : 'Copy selection'}
-                </button>
-                <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}>
-                  {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
-                </button>
+            <div
+              className="hidden md:block sticky z-40 mb-3"
+              style={{ top: `${NAV_H + cmdH + 8}px` }}
+            >
+              <div className={`${isDark ? 'bg-gray-800 text-gray-100 border border-gray-700' : 'bg-white text-gray-800 border border-gray-200'} rounded-lg shadow px-4 py-3 flex items-center justify-between`}>
+                <div className="text-sm">
+                  {state.settings.language === 'fr'
+                    ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
+                    : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copySelection}
+                    className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
+                  >
+                    <CopyIcon size={16} className="mr-2" />
+                    {state.settings.language === 'fr' ? 'Copier la sélection' : 'Copy selection'}
+                  </button>
+                  <button
+                    onClick={() => setSelectedVerses([])}
+                    className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}
+                  >
+                    {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
