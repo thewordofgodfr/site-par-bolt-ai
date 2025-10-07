@@ -4,17 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Fallback SEO pour les robots qui n'exécutent pas le JS -->
+    <!-- SEO (fallback si JS désactivé) -->
     <title>TheWordofGod.fr — Bible en ligne (LSG 1910 & KJV)</title>
     <meta name="description" content="The Voice of God : lecture de la Bible en français (LSG 1910) et en anglais (KJV). Recherche rapide, verset aléatoire, lecture chapitre par chapitre. Gratuit et sans inscription.">
     <link rel="canonical" href="https://www.thewordofgod.fr/" />
-    <meta name="theme-color" content="#0f172a">
 
-    <!-- Favicons / Icônes (fichiers dans /public) -->
+    <!-- Couleur du thème (doit matcher le manifest) -->
+    <meta name="theme-color" content="#2196f3" />
+
+    <!-- Favicons / PWA -->
     <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <!-- Optionnel mais utile pour iOS -->
+    <link rel="apple-touch-icon" href="/logo192.png">
     <link rel="manifest" href="/site.webmanifest">
 
     <!-- Open Graph (prévisualisation partage) -->
@@ -22,11 +23,14 @@
     <meta property="og:description" content="Lire la Bible en français (LSG 1910) et en anglais (KJV). Verset aléatoire, recherche, lecture par chapitre.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.thewordofgod.fr/">
-    <meta property="og:image" content="/icon-512.png">
+    <meta property="og:image" content="https://www.thewordofgod.fr/logo512.png">
+
+    <!-- (Optionnel) Améliorations PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
