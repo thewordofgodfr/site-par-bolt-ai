@@ -1,17 +1,50 @@
-// sw.js — Offline béton SANS bump manuel du cache
+// sw.js — Offline béton avec pré-cache complet Bible (FR+EN)
 const CACHE_NAME = 'twog'; // stable
 const APP_SHELL = [
-  '/',                // SPA entry
-  '/favicon.ico',
-  '/logo192.png',
-  '/logo512.png',
-  '/site.webmanifest'
+  '/', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'
 ];
+
+// --- Pré-cache complet ---
+const PRECACHE_FULL_BIBLE = true;
+const BIBLES_INDEX_URL = '/data/bible/bibles-index.json';
+const PRECACHE_CHUNK = 15; // nb de fichiers téléchargés en parallèle
+
+async function precacheBibleFromIndex(cache) {
+  try {
+    const res = await fetch(BIBLES_INDEX_URL, { cache: 'no-store' });
+    if (!res.ok) {
+      console.warn('[SW] bibles-index.json introuvable ou invalide');
+      return;
+    }
+    const index = await res.json();
+    const all = [...(index.fr || []), ...(index.en || [])];
+
+    for (let i = 0; i < all.length; i += PRECACHE_CHUNK) {
+      const slice = all.slice(i, i + PRECACHE_CHUNK);
+      await Promise.all(slice.map(async (url) => {
+        try {
+          const r = await fetch(url);
+          if (r && (r.ok || r.type === 'opaque')) {
+            await cache.put(url, r.clone());
+          }
+        } catch {
+          // on ignore l'erreur pour continuer le lot suivant
+        }
+      }));
+    }
+    console.log('[SW] Pré-cache Bible terminé :', all.length, 'fichiers');
+  } catch (e) {
+    console.warn('[SW] Erreur pré-cache Bible :', e);
+  }
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(APP_SHELL);
+    if (PRECACHE_FULL_BIBLE) {
+      await precacheBibleFromIndex(cache);
+    }
     await self.skipWaiting();
   })());
 });
@@ -21,8 +54,6 @@ self.addEventListener('activate', (event) => {
     if ('navigationPreload' in self.registration) {
       await self.registration.navigationPreload.enable();
     }
-    // On garde un seul cache nommé 'twog' : les assets hashés créent de nouvelles clés,
-    // et l'index est récupéré réseau en premier (voir plus bas).
     self.clients.claim();
   })());
 });
@@ -48,7 +79,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // 1) Navigations → network-first avec fallback SPA (offline)
+  // 1) Navigations → network-first + fallback SPA (offline)
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -56,7 +87,6 @@ self.addEventListener('fetch', (event) => {
         if (preload) return preload;
 
         const net = await fetch(req, { cache: 'no-store' });
-        // Optionnel: garder la home en cache
         if (url.pathname === '/' && net && net.ok) {
           const cache = await caches.open(CACHE_NAME);
           cache.put('/', net.clone());
@@ -88,7 +118,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3) Assets statiques (hashés par Vite) → cache-first + update background
+  // 3) Assets statiques (hashés par Vite) → cache-first + mise à jour en arrière-plan
   if (isStaticAsset(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
