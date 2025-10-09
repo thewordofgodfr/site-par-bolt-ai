@@ -7,6 +7,14 @@ export default function QuickSlotsHelp() {
   const isDark = state.settings.theme === 'dark';
   const lang = state.settings.language === 'fr' ? 'fr' : 'en';
 
+  // --- Accessibilité/tailles lisibles ---
+  const base = Math.max(state.settings.fontSize ?? 20, 20); // toujours ≥ 20px
+  const titleSize = Math.min(36, base + 10); // 30–36px
+  const bodySize = Math.min(28, base + 4);   // 24–28px
+  const bulletSize = bodySize;
+  const lineHeight = 1.8;
+  const chip = 48; // taille des pastilles d’aperçu (px)
+
   const copy = {
     fr: {
       title: 'Raccourcis de lecture',
@@ -18,6 +26,7 @@ export default function QuickSlotsHelp() {
         'Quand un numéro est actif, il se met à jour automatiquement pendant la navigation.',
         'Les mémoires sont gardées uniquement sur cet appareil (stockage local).',
       ],
+      preview: 'Aperçu',
     },
     en: {
       title: 'Reading shortcuts',
@@ -29,45 +38,51 @@ export default function QuickSlotsHelp() {
         'When a number is active, it auto-updates while you navigate.',
         'Slots are stored only on this device (local storage).',
       ],
+      preview: 'Preview',
     },
   }[lang];
 
   return (
     <section
-      className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl p-5 md:p-6 shadow-lg`}
+      className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl p-6 md:p-7 shadow-lg`}
     >
-      {/* Titre */}
+      {/* Titre + icône */}
       <header className="flex items-center gap-3">
-        <Info className={`${isDark ? 'text-blue-300' : 'text-blue-700'}`} size={20} />
-        <h3 className={`text-xl md:text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <Info className={`${isDark ? 'text-blue-300' : 'text-blue-700'}`} size={24} />
+        <h3
+          className={`${isDark ? 'text-white' : 'text-gray-900'} font-semibold`}
+          style={{ fontSize: `${titleSize}px`, lineHeight }}
+        >
           {copy.title}
         </h3>
       </header>
 
-      {/* Aperçu juste sous le titre */}
+      {/* Aperçu sous le titre */}
       <div
-        className={`mt-3 mb-5 flex items-center gap-3 rounded-2xl px-4 py-3 border ${
+        className={`mt-3 mb-6 flex items-center gap-4 rounded-2xl px-4 py-3 border ${
           isDark ? 'border-gray-700 bg-gray-900/40' : 'border-gray-200 bg-gray-50'
         }`}
         aria-label={lang === 'fr' ? 'Illustration des raccourcis' : 'Shortcuts illustration'}
       >
         {/* Loupe */}
         <div
-          className={`h-10 w-10 rounded-full flex items-center justify-center border ${
+          className={`rounded-full flex items-center justify-center border ${
             isDark ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-800'
           }`}
+          style={{ width: chip, height: chip }}
           title={lang === 'fr' ? 'Dernier passage' : 'Last passage'}
         >
-          <SearchIcon size={18} />
+          <SearchIcon size={20} />
         </div>
 
         {/* 1 actif */}
         <div
-          className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold ring-2 border ${
+          className={`rounded-full flex items-center justify-center font-semibold ring-2 border ${
             isDark
               ? 'bg-blue-600 text-white ring-blue-300/40 border-blue-600'
               : 'bg-blue-600 text-white ring-blue-200 border-blue-600'
           }`}
+          style={{ width: chip, height: chip, fontSize: 18 }}
           title={lang === 'fr' ? 'Raccourci 1 (actif)' : 'Shortcut 1 (active)'}
         >
           1
@@ -77,9 +92,10 @@ export default function QuickSlotsHelp() {
         {[2, 3].map((n) => (
           <div
             key={n}
-            className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold border ${
+            className={`rounded-full flex items-center justify-center font-semibold border ${
               isDark ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white text-gray-800 border-gray-300'
             }`}
+            style={{ width: chip, height: chip, fontSize: 18 }}
             title={(lang === 'fr' ? 'Raccourci ' : 'Shortcut ') + n}
           >
             {n}
@@ -87,17 +103,28 @@ export default function QuickSlotsHelp() {
         ))}
       </div>
 
-      {/* Intro en plus grand */}
-      <p className={`${isDark ? 'text-gray-200' : 'text-gray-800'} text-base md:text-lg leading-relaxed mb-4`}>
+      {/* Intro très lisible */}
+      <p
+        className={`${isDark ? 'text-gray-100' : 'text-gray-900'}`}
+        style={{ fontSize: `${bodySize}px`, lineHeight, marginBottom: '18px' }}
+      >
         {copy.intro}
       </p>
 
-      {/* Points clés lisibles */}
+      {/* Points clés très lisibles */}
       <ul className="space-y-3">
         {copy.items.map((line, i) => (
           <li key={i} className="flex items-start gap-3">
-            <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2 text-lg`}>•</span>
-            <span className={`${isDark ? 'text-gray-100' : 'text-gray-900'} text-base md:text-lg leading-relaxed`}>
+            <span
+              className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+              style={{ fontSize: `${bulletSize}px`, lineHeight }}
+            >
+              •
+            </span>
+            <span
+              className={`${isDark ? 'text-gray-100' : 'text-gray-900'}`}
+              style={{ fontSize: `${bodySize}px`, lineHeight }}
+            >
               {line}
             </span>
           </li>
