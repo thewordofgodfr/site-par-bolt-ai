@@ -13,28 +13,26 @@ export default function QuickSlotsHelp() {
       intro:
         'Ces 4 boutons, alignés à droite du sélecteur Livre/Chapitre, servent à revenir instantanément sur vos lectures fréquentes.',
       items: [
-        '🔎 : mène au dernier verset ouvert depuis la recherche OU depuis « Verset aléatoire » (Accueil). Ce bouton n’écrase jamais 1/2/3.',
-        '1 • 2 • 3 : mémoires personnelles.',
-        'Si la mémoire est vide : appuyer sur 1/2/3 enregistre l’endroit actuel.',
-        'Quand vous utilisez 1/2/3, ce numéro devient “actif” et se met à jour automatiquement pendant que vous changez de livre/chapitre.',
-        'Pour mémoriser un autre endroit : appuyez sur 1/2/3 (pour l’activer), allez où vous voulez — c’est enregistré automatiquement.',
-        'Les mémoires sont gardées uniquement sur cet appareil (stockage local), et fonctionnent en français ou en anglais.',
+        '🔎 : ouvre le dernier passage consulté (recherche ou « Verset aléatoire »). N’écrase jamais 1/2/3.',
+        '1 • 2 • 3 : emplacements personnels.',
+        'Quand un numéro est actif, il se met à jour automatiquement pendant la navigation.',
+        'Les mémoires sont gardées uniquement sur cet appareil (stockage local).',
       ],
-      tip: 'Astuce : utilisez 🔎 pour reprendre un verset trouvé via la recherche ou celui de « Verset aléatoire », sans toucher à vos mémoires 1/2/3.',
+      tip: 'Astuce : utilisez 🔎 pour reprendre un verset trouvé via la recherche ou « Verset aléatoire » sans toucher à 1/2/3.',
+      memoriesLabel: 'mémoires',
     },
     en: {
       title: 'Reading shortcuts (🔎 • 1 • 2 • 3)',
       intro:
         'These 4 buttons, aligned to the right of the Book/Chapter selector, let you jump back to frequent readings instantly.',
       items: [
-        '🔎 : jumps to the last verse you opened from search OR from “Random verse” (Home). It never overwrites 1/2/3.',
-        '1 • 2 • 3: personal memories (bookmarks).',
-        'If the memory is empty: tapping 1/2/3 saves your current place.',
-        'When you use 1/2/3, that number becomes “active” and auto-updates while you navigate between books/chapters.',
-        'To save a different place: tap 1/2/3 (to activate it), go where you want — it will save automatically.',
-        'Memories are stored only on this device (local storage) and work in French or English.',
+        '🔎 : opens the last passage you viewed (search or “Random verse”). It never overwrites 1/2/3.',
+        '1 • 2 • 3: personal slots.',
+        'When a number is active, it auto-updates while you navigate.',
+        'Slots are stored only on this device (local storage).',
       ],
-      tip: 'Tip: use 🔎 to resume a verse from search or from “Random verse” without touching your 1/2/3 memories.',
+      tip: 'Tip: use 🔎 to resume from search or “Random verse” without touching 1/2/3.',
+      memoriesLabel: 'memories',
     },
   }[lang];
 
@@ -69,20 +67,47 @@ export default function QuickSlotsHelp() {
         <p>{copy.tip}</p>
       </div>
 
-      {/* petite légende visuelle */}
-      <div className="mt-4 flex items-center gap-2 text-xs">
-        <span className={`${isDark ? 'bg-white text-indigo-800' : 'bg-white text-indigo-700'} border border-indigo-300 rounded-full px-2 py-1 inline-flex items-center gap-1`}>
-          <SearchIcon className="w-3.5 h-3.5" />
-          <span>🔎</span>
-        </span>
-        <span className="px-2 py-1 rounded-full bg-blue-600 text-white">1</span>
-        <span className={`${isDark ? 'bg-gray-800 text-gray-200 border border-gray-600' : 'bg-white text-gray-800 border border-gray-300'} px-2 py-1 rounded-full`}>2</span>
-        <span className={`${isDark ? 'bg-gray-800 text-gray-200 border border-gray-600' : 'bg-white text-gray-800 border border-gray-300'} px-2 py-1 rounded-full`}>3</span>
-        <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} ml-2 inline-flex items-center gap-1`}>
+      {/* Illustration corrigée : loupe + 1 / 2 / 3 */}
+      <div className="mt-4 flex items-center justify-between">
+        <div
+          className={`flex items-center gap-3 rounded-full px-4 py-2 border ${
+            isDark ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
+          } shadow-sm`}
+          aria-label={lang === 'fr' ? 'Illustration des raccourcis' : 'Shortcuts illustration'}
+        >
+          {/* Loupe (dernier passage) */}
+          <div
+            className={`h-9 w-9 rounded-full flex items-center justify-center ${
+              isDark ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'
+            }`}
+            title={lang === 'fr' ? 'Dernier passage' : 'Last passage'}
+          >
+            <SearchIcon size={18} />
+          </div>
+
+          {/* Boutons 1 / 2 / 3 */}
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className={`h-9 w-9 rounded-full text-sm font-semibold flex items-center justify-center ${
+                isDark
+                  ? 'bg-gray-800 text-gray-200 border border-gray-600'
+                  : 'bg-white text-gray-800 border border-gray-300'
+              }`}
+              title={lang === 'fr' ? `Raccourci ${n}` : `Shortcut ${n}`}
+            >
+              {n}
+            </div>
+          ))}
+        </div>
+
+        {/* Légende compact */}
+        <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} ml-3 inline-flex items-center gap-1 text-xs`}>
           <Bookmark className="w-3.5 h-3.5" />
-          <span>{lang === 'fr' ? 'mémoires' : 'memories'}</span>
+          <span>{copy.memoriesLabel}</span>
         </span>
       </div>
     </section>
   );
 }
+
