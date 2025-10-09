@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Info } from 'lucide-react';
+import { Info, Search as SearchIcon } from 'lucide-react';
 
 export default function QuickSlotsHelp() {
   const { state } = useApp();
@@ -18,6 +18,7 @@ export default function QuickSlotsHelp() {
         'Quand un numéro est actif, il se met à jour automatiquement pendant la navigation.',
         'Les mémoires sont gardées uniquement sur cet appareil (stockage local).',
       ],
+      previewLabel: 'Aperçu',
     },
     en: {
       title: 'Reading shortcuts (🔎 • 1 • 2 • 3)',
@@ -29,32 +30,92 @@ export default function QuickSlotsHelp() {
         'When a number is active, it auto-updates while you navigate.',
         'Slots are stored only on this device (local storage).',
       ],
+      previewLabel: 'Preview',
     },
   }[lang];
 
   return (
     <section
-      className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-xl p-4 md:p-5 shadow-sm`}
+      className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl p-5 md:p-6 shadow-lg`}
     >
-      <header className="flex items-center gap-2 mb-2">
-        <Info className={`${isDark ? 'text-blue-300' : 'text-blue-700'}`} size={18} />
-        <h3 className={`text-base md:text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      {/* Titre */}
+      <header className="flex items-center gap-3 mb-3">
+        <Info className={`${isDark ? 'text-blue-300' : 'text-blue-700'}`} size={20} />
+        <h3 className={`text-xl md:text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {copy.title}
         </h3>
       </header>
 
-      <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm mb-3`}>
+      {/* Intro en plus grand */}
+      <p className={`${isDark ? 'text-gray-200' : 'text-gray-800'} text-base md:text-lg leading-relaxed mb-4`}>
         {copy.intro}
       </p>
 
-      <ul className="space-y-2 text-sm">
+      {/* Points clés en grand et aérés */}
+      <ul className="space-y-3">
         {copy.items.map((line, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>•</span>
-            <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{line}</span>
+          <li key={i} className="flex items-start gap-3">
+            <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2 text-lg`}>•</span>
+            <span className={`${isDark ? 'text-gray-100' : 'text-gray-900'} text-base md:text-lg leading-relaxed`}>
+              {line}
+            </span>
           </li>
         ))}
       </ul>
+
+      {/* Petite séparation */}
+      <div className={`${isDark ? 'border-gray-700' : 'border-gray-200'} border-t my-5`} />
+
+      {/* Aperçu visuel aligné sur le design actuel (loupe + 1 / 2 / 3) */}
+      <div className="flex items-center justify-between mb-2">
+        <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm`}>
+          {copy.previewLabel}
+        </span>
+      </div>
+
+      <div
+        className={`flex items-center gap-3 rounded-2xl px-4 py-3 border ${
+          isDark ? 'border-gray-700 bg-gray-900/40' : 'border-gray-200 bg-gray-50'
+        }`}
+        aria-label={lang === 'fr' ? 'Illustration des raccourcis' : 'Shortcuts illustration'}
+      >
+        {/* Loupe */}
+        <div
+          className={`h-10 w-10 rounded-full flex items-center justify-center border ${
+            isDark ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-800'
+          }`}
+          title={lang === 'fr' ? 'Dernier passage' : 'Last passage'}
+        >
+          <SearchIcon size={18} />
+        </div>
+
+        {/* 1 actif (style proche de la barre Lecture) */}
+        <div
+          className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold ring-2 border ${
+            isDark
+              ? 'bg-blue-600 text-white ring-blue-300/40 border-blue-600'
+              : 'bg-blue-600 text-white ring-blue-200 border-blue-600'
+          }`}
+          title={lang === 'fr' ? 'Raccourci 1 (actif)' : 'Shortcut 1 (active)'}
+        >
+          1
+        </div>
+
+        {/* 2 & 3 inactifs */}
+        {[2, 3].map((n) => (
+          <div
+            key={n}
+            className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold border ${
+              isDark
+                ? 'bg-gray-800 text-gray-200 border-gray-700'
+                : 'bg-white text-gray-800 border-gray-300'
+            }`}
+            title={(lang === 'fr' ? 'Raccourci ' : 'Shortcut ') + n}
+          >
+            {n}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
