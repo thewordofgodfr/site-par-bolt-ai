@@ -53,7 +53,7 @@ export default function Reading() {
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [showChapterPicker, setShowChapterPicker] = useState(false);
 
-  // Hint swipe (une seule fois par session) — plus long
+  // Hint swipe (une seule fois par session) — durée ↑
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v3:${state.settings.language}`;
@@ -237,7 +237,7 @@ export default function Reading() {
       setHighlightedVerse(slot.verse ?? null);
       try { window.scrollTo({ top: 0 }); } catch {}
       fetchChapter(b, slot.chapter);
-      saveReadingPosition(b.name, slot.chapter);
+      saveReadingPosition(b.name, slot.chapter); // << important pour la restauration après navigation
       return;
     }
 
@@ -281,7 +281,7 @@ export default function Reading() {
       cls = filled
         ? 'bg-blue-600 text-white'
         : (isDark ? 'bg-gray-800 text-gray-200 border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
-      // IMPORTANT : seuls les slots 1..3 actifs “s’allument” (évite d’avoir loupe + 1 allumés)
+      // Seuls les slots 1..3 ACTIFS “s’allument”
       if (activeSlot === i) cls += ' ring-2 ring-offset-1 ring-blue-400';
     }
 
@@ -320,7 +320,7 @@ export default function Reading() {
   useEffect(() => {
     if (hasLoadedContext) return;
 
-    // 1) Contexte direct (depuis Recherche/Accueil)
+    // 1) Contexte direct (depuis Recherche/Accueil – ex: verset aléatoire)
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = resolveBook(state.readingContext.book);
       if (book) {
@@ -332,6 +332,8 @@ export default function Reading() {
         // Loupe visuelle seule (désactive 1..3)
         setTapped(0);
         setActiveSlot(null);
+        // ✅ NOUVEAU : on enregistre aussi la dernière lecture
+        saveReadingPosition(book.name, state.readingContext.chapter);
         setHasLoadedContext(true);
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
         return;
@@ -839,7 +841,7 @@ export default function Reading() {
                 ◀ Glissez / Swipe ▶
                 <div className="text-xs font-normal opacity-95 mt-1 text-center">
                   {state.settings.language === 'fr'
-                    ? 'pour changer de chapitre (passage automatique au livre suivant/precedent)'
+                    ? 'pour changer de chapitre (passage automatique au livre suivant/précédent)'
                     : 'to change chapter (auto move to next/previous book)'}
                 </div>
               </div>
