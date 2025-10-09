@@ -115,7 +115,7 @@ export default function Reading() {
       setSelectedVerses([]);
       setHighlightedVerse(null);
       setScrollTargetVerse(null);
-      try { window.scrollTo({ top: 0 }); } catch {} // instantané
+      try { window.scrollTo({ top: 0 }); } catch {}
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
     }
@@ -379,16 +379,21 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
 
-  /* ============
-     Scroll ciblé
-     ============ */
+  /* ============ Scroll ciblé ============ */
+  // 1) on coupe l’enregistrement auto pendant le scroll programmatique
   const suppressAutoSaveUntil = useRef<number>(0);
+  // 2) on empêche une **2ᵉ passe** de l’effet de réécraser aussitôt (retour vers verset 1)
+  const programmaticScrollUntil = useRef<number>(0);
 
-  function scrollToVerseNumber(v: number, smooth = true) {
-    // Empêche le listener scroll de sauver "verset 1" pendant qu'on bouge
-    suppressAutoSaveUntil.current = Date.now() + 1000;
+  function scrollToVerseNumber(v: number, smooth = true, extraTop = 0) {
+    // Empêche le listener scroll d’écrire pendant qu’on bouge
+    const now = Date.now();
+    suppressAutoSaveUntil.current = now + 1200;
+    programmaticScrollUntil.current = now + 1200;
 
-    const offset = NAV_H + cmdH + 14; // marge ↑ pour ne pas cacher le haut du verset
+    const baseOffset = NAV_H + cmdH + 14; // marge de base
+    const offset = baseOffset + extraTop; // +extraTop pour la loupe
+
     let tries = 0;
     const maxTries = 24; // ~400ms si 16ms/frame
 
@@ -401,9 +406,7 @@ export default function Reading() {
         window.scrollTo({ top: Math.max(target, 0), behavior: smooth ? 'smooth' : 'auto' });
         return;
       }
-      if (tries++ < maxTries) {
-        requestAnimationFrame(tick);
-      }
+      if (tries++ < maxTries) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   }
@@ -415,13 +418,18 @@ export default function Reading() {
     const doScroll = () => {
       const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
-        scrollToVerseNumber(v, true);
+        // si c’est la loupe, on ajoute un petit offset supplémentaire (~1 ligne)
+        const isHighlight = highlightedVerse !== null && v === highlightedVerse;
+        scrollToVerseNumber(v, true, isHighlight ? 12 : 0);
         // si c'était une cible simple (1/2/3), on nettoie après un court délai
         if (scrollTargetVerse !== null && highlightedVerse === null) {
           setTimeout(() => setScrollTargetVerse(null), 600);
         }
         return;
       }
+
+      // Si on vient JUSTE de scroller nous-mêmes, ne fais pas de fallback (évitons le retour au 1)
+      if (Date.now() < programmaticScrollUntil.current) return;
 
       // Sinon, restaure scroll chapitre si connu
       try {
@@ -430,7 +438,9 @@ export default function Reading() {
         );
         const y = raw ? parseInt(raw, 10) : 0;
         if (Number.isFinite(y) && y > 0) {
-          suppressAutoSaveUntil.current = Date.now() + 500;
+          const now = Date.now();
+          suppressAutoSaveUntil.current = now + 500;
+          programmaticScrollUntil.current = now + 500;
           window.scrollTo({ top: y, behavior: 'auto' });
         } else {
           window.scrollTo({ top: 0, behavior: 'auto' });
@@ -509,7 +519,7 @@ export default function Reading() {
     if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
     const t = e.touches[0];
     const dx = t.clientX - swipeStart.current.x;
-    const dy = t.clientY - swipeStart.current.y;
+       const dy = t.clientY - swipeStart.current.y;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
@@ -1007,3 +1017,4 @@ export default function Reading() {
     </div>
   );
 }
+
