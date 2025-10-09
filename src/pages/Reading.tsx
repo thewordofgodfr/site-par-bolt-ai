@@ -53,14 +53,14 @@ export default function Reading() {
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [showChapterPicker, setShowChapterPicker] = useState(false);
 
-  // Hint swipe (une seule fois par session)
+  // Hint swipe (une seule fois par session) — plus long
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v3:${state.settings.language}`;
     if (!sessionStorage.getItem(key)) {
       setShowSwipeHint(true);
       sessionStorage.setItem(key, '1');
-      const timer = setTimeout(() => setShowSwipeHint(false), 3500);
+      const timer = setTimeout(() => setShowSwipeHint(false), 6000);
       return () => clearTimeout(timer);
     }
   }, [state.settings.language]);
@@ -80,10 +80,18 @@ export default function Reading() {
     }
   };
 
-  const handleBookSelect = (book: BibleBook) => {
-    // Sauvegarde scroll du chapitre courant (cleanup manuel)
-    saveScrollForCurrent();
+  const saveScrollForCurrent = () => {
+    if (!selectedBook) return;
+    try {
+      sessionStorage.setItem(
+        `twog:reading:scroll:${state.settings.language}:${selectedBook.name}:${selectedChapter}`,
+        String(window.scrollY || 0)
+      );
+    } catch {}
+  };
 
+  const handleBookSelect = (book: BibleBook) => {
+    saveScrollForCurrent();
     setSelectedBook(book);
     setSelectedChapter(1);
     setSelectedVerses([]);
@@ -96,9 +104,7 @@ export default function Reading() {
   };
 
   const handleChapterSelect = (chapterNum: number) => {
-    // Sauvegarde scroll du chapitre courant (cleanup manuel)
     saveScrollForCurrent();
-
     setSelectedChapter(chapterNum);
     if (selectedBook) {
       setSelectedVerses([]);
@@ -109,11 +115,46 @@ export default function Reading() {
     }
   };
 
-  const handlePreviousChapter = () => {
-    if (selectedBook && selectedChapter > 1) handleChapterSelect(selectedChapter - 1);
+  // Aller au chapitre suivant (avance au livre suivant si besoin)
+  const handleNextUnit = () => {
+    if (!selectedBook) return;
+    if (selectedChapter < selectedBook.chapters) {
+      handleChapterSelect(selectedChapter + 1);
+      return;
+    }
+    // Dernier chapitre du livre → livre suivant si dispo
+    const idx = books.findIndex(b => b.name === selectedBook.name);
+    if (idx >= 0 && idx < books.length - 1) {
+      const nextBook = books[idx + 1];
+      setSelectedBook(nextBook);
+      setSelectedChapter(1);
+      setSelectedVerses([]);
+      setHighlightedVerse(null);
+      try { window.scrollTo({ top: 0 }); } catch {}
+      fetchChapter(nextBook, 1);
+      saveReadingPosition(nextBook.name, 1);
+    }
   };
-  const handleNextChapter = () => {
-    if (selectedBook && selectedChapter < selectedBook.chapters) handleChapterSelect(selectedChapter + 1);
+
+  // Aller au chapitre précédent (recule au livre précédent si besoin)
+  const handlePrevUnit = () => {
+    if (!selectedBook) return;
+    if (selectedChapter > 1) {
+      handleChapterSelect(selectedChapter - 1);
+      return;
+    }
+    // Premier chapitre → livre précédent si dispo
+    const idx = books.findIndex(b => b.name === selectedBook.name);
+    if (idx > 0) {
+      const prevBook = books[idx - 1];
+      setSelectedBook(prevBook);
+      setSelectedChapter(prevBook.chapters);
+      setSelectedVerses([]);
+      setHighlightedVerse(null);
+      try { window.scrollTo({ top: 0 }); } catch {}
+      fetchChapter(prevBook, prevBook.chapters);
+      saveReadingPosition(prevBook.name, prevBook.chapters);
+    }
   };
 
   const oldTestamentBooks = books.filter(book => book.testament === 'old');
@@ -131,9 +172,11 @@ export default function Reading() {
     return null;
   };
 
-  // ===== Quick Slots =====
+  /* =========================
+     Quick Slots
+     ========================= */
   const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
-  // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l'auto-suivi mais peut être "allumé" visuellement
+  // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l’auto-suivi mais “s’allume” visuellement
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null); // 0..3 pour visuel
 
@@ -144,7 +187,7 @@ export default function Reading() {
     try { setQuickSlots(readAllSlots()); } catch {}
   }
 
-  // Restaure le "slot visuel" utilisé en dernier (et l'auto-suivi si 1/2/3)
+  // Restaure slots + dernier “tapped” (et auto-suivi si 1..3)
   useEffect(() => {
     refreshSlots();
     try {
@@ -183,7 +226,7 @@ export default function Reading() {
     setTapped(i);
 
     if (i === 0) {
-      // Loupe = désactiver l'auto-suivi pour ne jamais écraser 1/2/3
+      // Loupe = désactiver l’auto-suivi pour ne jamais écraser 1/2/3
       setActiveSlot(null);
       if (!slot) return;
       const b = resolveBook(slot.book);
@@ -238,7 +281,8 @@ export default function Reading() {
       cls = filled
         ? 'bg-blue-600 text-white'
         : (isDark ? 'bg-gray-800 text-gray-200 border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
-      if (activeSlot === i || lastTappedSlot === i) cls += ' ring-2 ring-offset-1 ring-blue-400';
+      // IMPORTANT : seuls les slots 1..3 actifs “s’allument” (évite d’avoir loupe + 1 allumés)
+      if (activeSlot === i) cls += ' ring-2 ring-offset-1 ring-blue-400';
     }
 
     const title =
@@ -262,22 +306,7 @@ export default function Reading() {
   // ===== Navigation contextuelle & restauration dernière lecture =====
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
-  // Clé scroll par chapitre
-  const scrollKey = (lang: string, bookId?: string | null, chap?: number | null) =>
-    `twog:reading:scroll:${lang}:${bookId ?? ''}:${chap ?? ''}`;
-
-  // Sauvegarde scroll courant
-  const saveScrollForCurrent = () => {
-    if (!selectedBook) return;
-    try {
-      sessionStorage.setItem(
-        scrollKey(state.settings.language, selectedBook.name, selectedChapter),
-        String(window.scrollY || 0)
-      );
-    } catch {}
-  };
-
-  // Sauvegarde scroll avant unload + à chaque changement de chapitre/livre (via cleanup)
+  // Sauvegarde scroll avant unload
   useEffect(() => {
     const save = () => saveScrollForCurrent();
     window.addEventListener('beforeunload', save);
@@ -300,9 +329,10 @@ export default function Reading() {
         fetchChapter(book, state.readingContext.chapter);
         setSelectedVerses([]);
         setHighlightedVerse(state.readingContext.verse ?? null);
-        setHasLoadedContext(true);
-        // Si lecture vient de la recherche/aleatoire → visuel loupe
+        // Loupe visuelle seule (désactive 1..3)
         setTapped(0);
+        setActiveSlot(null);
+        setHasLoadedContext(true);
         dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
         return;
       }
@@ -319,12 +349,11 @@ export default function Reading() {
         setSelectedVerses([]);
         setHighlightedVerse(last.verse ?? null);
         setHasLoadedContext(true);
-        // Restaurer le "slot visuel" si on en avait un (déjà fait via localStorage dans useEffect plus haut)
         return;
       }
     }
 
-    // 3) Première ouverture → John 1 (fallback doux)
+    // 3) Première ouverture → John 1 (fallback)
     const john = resolveBook('John');
     if (john) {
       setSelectedBook(john);
@@ -345,7 +374,6 @@ export default function Reading() {
         const id = `verse-${highlightedVerse}`;
         const el = document.getElementById(id);
         if (!el) return;
-        // scrollMarginTop est déjà affecté sur chaque verset (stickyOffset)
         try {
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch {
@@ -360,7 +388,7 @@ export default function Reading() {
       // Sinon, restaure scroll chapitre si connu
       try {
         const raw = sessionStorage.getItem(
-          scrollKey(state.settings.language, selectedBook.name, selectedChapter)
+          `twog:reading:scroll:${state.settings.language}:${selectedBook.name}:${selectedChapter}`
         );
         const y = raw ? parseInt(raw, 10) : 0;
         if (Number.isFinite(y) && y > 0) {
@@ -371,13 +399,12 @@ export default function Reading() {
       } catch {}
     };
 
-    // Laisse le temps au DOM de rendre
     const t = setTimeout(doScroll, 60);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, state.settings.language]);
 
-  // Scroll + extinction de surbrillance (20s)
+  // Extinction de la surbrillance (20s)
   useEffect(() => {
     if (highlightedVerse !== null) {
       const t = setTimeout(() => setHighlightedVerse(null), 20000);
@@ -428,22 +455,9 @@ export default function Reading() {
     }
   };
 
-  // ===== Gestes (mobile)
+  /* ===== Gestes : uniquement gauche/droite ===== */
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
-
-  const atTop = () => (window.scrollY || 0) < 8;
-  const atBottom = () => {
-    const scrollY = window.scrollY || 0;
-    const innerH = window.innerHeight || document.documentElement.clientHeight || 0;
-    const docH = Math.max(
-      document.body.scrollHeight,
-      document.documentElement.scrollHeight,
-      document.body.offsetHeight,
-      document.documentElement.offsetHeight
-    );
-    return scrollY + innerH > docH - 12; // seuil
-  };
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -459,24 +473,13 @@ export default function Reading() {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Horizontal → changer de chapitre
+    // Navigation HORIZONTALE uniquement (chapitre suivant/précédent avec passage de livre)
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
       if (dx < 0) {
-        if (selectedChapter < selectedBook.chapters) handleNextChapter();
+        handleNextUnit();
       } else {
-        if (selectedChapter > 1) handlePreviousChapter();
-      }
-      return;
-    }
-
-    // Vertical → si en bas et swipe vers le haut => chapitre suivant ; en haut & swipe vers le bas => précédent
-    if (absDy > 70 && absDy > absDx * 1.4) {
-      swipeHandled.current = true;
-      if (dy < 0 && atBottom()) {
-        if (selectedChapter < selectedBook.chapters) handleNextChapter();
-      } else if (dy > 0 && atTop()) {
-        if (selectedChapter > 1) handlePreviousChapter();
+        handlePrevUnit();
       }
     }
   };
@@ -572,10 +575,9 @@ export default function Reading() {
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={handlePreviousChapter}
-                        disabled={selectedChapter <= 1}
+                        onClick={() => handlePrevUnit()}
                         className={`p-1.5 rounded-md transition-all ${
-                          selectedChapter <= 1
+                          selectedBook && selectedChapter <= 1 && books.findIndex(b => b.name === selectedBook.name) === 0
                             ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
@@ -599,10 +601,9 @@ export default function Reading() {
                       </div>
 
                       <button
-                        onClick={handleNextChapter}
-                        disabled={selectedChapter >= selectedBook.chapters}
+                        onClick={() => handleNextUnit()}
                         className={`p-1.5 rounded-md transition-all ${
-                          selectedChapter >= selectedBook.chapters
+                          selectedBook && selectedChapter >= selectedBook.chapters && books.findIndex(b => b.name === selectedBook.name) === books.length - 1
                             ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
@@ -679,7 +680,7 @@ export default function Reading() {
                           key={v.verse}
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
-                          style={{ scrollMarginTop: stickyOffset }}
+                          style={{ scrollMarginTop: NAV_H + cmdH + 12 }}
                           className={`relative cursor-pointer px-3 pt-6 sm:pt-7 pb-2 sm:pb-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder}`}
                         >
                           <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -831,15 +832,15 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Hint swipe (fond bleu lisible) */}
+          {/* Hint swipe (fond bleu lisible, durée ↑) */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
               <div className="px-5 py-4 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white animate-pulse">
                 ◀ Glissez / Swipe ▶
                 <div className="text-xs font-normal opacity-95 mt-1 text-center">
                   {state.settings.language === 'fr'
-                    ? 'pour changer de chapitre (ou swipe ↑ en bas / ↓ en haut)'
-                    : 'to change chapter (or swipe ↑ at bottom / ↓ at top)'}
+                    ? 'pour changer de chapitre (passage automatique au livre suivant/precedent)'
+                    : 'to change chapter (auto move to next/previous book)'}
                 </div>
               </div>
             </div>
@@ -849,4 +850,3 @@ export default function Reading() {
     </div>
   );
 }
-
