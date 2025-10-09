@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { Book, Globe, Music, ExternalLink, Heart, Shuffle } from 'lucide-react';
+import { Book, Globe, ExternalLink, Heart, Shuffle } from 'lucide-react';
 
 export default function About() {
   const { state } = useApp();
@@ -166,33 +166,6 @@ export default function About() {
                 <ExternalLink size={14} />
               </a>
             </div>
-          </div>
-
-          {/* Creator Music Link */}
-          <div className={`${isDark ? 'bg-gradient-to-r from-purple-900 to-blue-900' : 'bg-gradient-to-r from-purple-100 to-blue-100'} rounded-xl shadow-lg p-8 text-center mb-8`}>
-            <div className="flex items-center justify-center mb-4">
-              <Music size={32} className={`mr-3 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
-              <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{t('musicLink')}</h2>
-            </div>
-
-            <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} mb-6 text-lg`}>
-              {state.settings.language === 'fr'
-                ? 'Découvrez l\'univers musical spirituel du créateur sur Instagram.'
-                : 'Discover the spiritual musical universe of the creator on Instagram.'}
-            </p>
-
-            <a
-              href="https://www.instagram.com/jnsp.music?utm_source=qr&igsh=aTJkajM0OWxmMGc5"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center space-x-3 px-8 py-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${
-                isDark ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl' : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl'
-              }`}
-            >
-              <Music size={20} />
-              <span>{state.settings.language === 'fr' ? 'Suivre @jnsp.music' : 'Follow @jnsp.music'}</span>
-              <ExternalLink size={16} />
-            </a>
           </div>
 
           {/* Footer */}
