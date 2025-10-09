@@ -10,14 +10,11 @@ export default function Settings() {
 
   const isDark = state.settings.theme === 'dark';
 
-  // Nouvelles tailles : 18px à 24px
+  // 4 réglages : 18, 20, 22, 24 px
   const fontSizes = [
     { label: '18px', value: 18 },
-    { label: '19px', value: 19 },
     { label: '20px', value: 20 },
-    { label: '21px', value: 21 },
     { label: '22px', value: 22 },
-    { label: '23px', value: 23 },
     { label: '24px', value: 24 },
   ];
 
@@ -81,7 +78,7 @@ export default function Settings() {
                   <Type size={16} className="mr-2" />
                   {t('fontSize')}
                 </label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {fontSizes.map(({ label, value }) => (
                     <button
                       key={value}
@@ -198,3 +195,4 @@ export default function Settings() {
     </div>
   );
 }
+
