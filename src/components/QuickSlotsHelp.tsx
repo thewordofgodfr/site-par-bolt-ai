@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Search as SearchIcon, Bookmark, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 export default function QuickSlotsHelp() {
   const { state } = useApp();
@@ -18,8 +18,6 @@ export default function QuickSlotsHelp() {
         'Quand un numéro est actif, il se met à jour automatiquement pendant la navigation.',
         'Les mémoires sont gardées uniquement sur cet appareil (stockage local).',
       ],
-      tip: 'Astuce : utilisez 🔎 pour reprendre un verset trouvé via la recherche ou « Verset aléatoire » sans toucher à 1/2/3.',
-      memoriesLabel: 'mémoires',
     },
     en: {
       title: 'Reading shortcuts (🔎 • 1 • 2 • 3)',
@@ -31,8 +29,6 @@ export default function QuickSlotsHelp() {
         'When a number is active, it auto-updates while you navigate.',
         'Slots are stored only on this device (local storage).',
       ],
-      tip: 'Tip: use 🔎 to resume from search or “Random verse” without touching 1/2/3.',
-      memoriesLabel: 'memories',
     },
   }[lang];
 
@@ -59,54 +55,6 @@ export default function QuickSlotsHelp() {
           </li>
         ))}
       </ul>
-
-      <div
-        className={`${isDark ? 'bg-indigo-900/30 text-indigo-200' : 'bg-indigo-50 text-indigo-800'} mt-4 rounded-lg px-3 py-2 text-sm flex items-start gap-2`}
-      >
-        <SearchIcon className="w-4 h-4 mt-0.5" />
-        <p>{copy.tip}</p>
-      </div>
-
-      {/* Illustration corrigée : loupe + 1 / 2 / 3 */}
-      <div className="mt-4 flex items-center justify-between">
-        <div
-          className={`flex items-center gap-3 rounded-full px-4 py-2 border ${
-            isDark ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
-          } shadow-sm`}
-          aria-label={lang === 'fr' ? 'Illustration des raccourcis' : 'Shortcuts illustration'}
-        >
-          {/* Loupe (dernier passage) */}
-          <div
-            className={`h-9 w-9 rounded-full flex items-center justify-center ${
-              isDark ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'
-            }`}
-            title={lang === 'fr' ? 'Dernier passage' : 'Last passage'}
-          >
-            <SearchIcon size={18} />
-          </div>
-
-          {/* Boutons 1 / 2 / 3 */}
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className={`h-9 w-9 rounded-full text-sm font-semibold flex items-center justify-center ${
-                isDark
-                  ? 'bg-gray-800 text-gray-200 border border-gray-600'
-                  : 'bg-white text-gray-800 border border-gray-300'
-              }`}
-              title={lang === 'fr' ? `Raccourci ${n}` : `Shortcut ${n}`}
-            >
-              {n}
-            </div>
-          ))}
-        </div>
-
-        {/* Légende compact */}
-        <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} ml-3 inline-flex items-center gap-1 text-xs`}>
-          <Bookmark className="w-3.5 h-3.5" />
-          <span>{copy.memoriesLabel}</span>
-        </span>
-      </div>
     </section>
   );
 }
