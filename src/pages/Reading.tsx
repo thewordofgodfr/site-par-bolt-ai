@@ -361,7 +361,6 @@ export default function Reading() {
         fetchChapter(book, last.chapter);
         setSelectedVerses([]);
         setHighlightedVerse(null);                         // pas de surbrillance
-        // si tu stockes last.verse, on le cible en scroll, sinon haut de chapitre
         setScrollTargetVerse((last as any).verse ?? null);
         setHasLoadedContext(true);
         return;
@@ -380,26 +379,48 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
 
-  // Après chargement du chapitre : scroll vers verset cible (highlighted OU scrollTarget)
+  /* ============
+     Scroll ciblé
+     ============ */
+  const suppressAutoSaveUntil = useRef<number>(0);
+
+  function scrollToVerseNumber(v: number, smooth = true) {
+    // Empêche le listener scroll de sauver "verset 1" pendant qu'on bouge
+    suppressAutoSaveUntil.current = Date.now() + 1000;
+
+    const offset = NAV_H + cmdH + 14; // marge ↑ pour ne pas cacher le haut du verset
+    let tries = 0;
+    const maxTries = 24; // ~400ms si 16ms/frame
+
+    const tick = () => {
+      const el = document.getElementById(`verse-${v}`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const current = window.scrollY || document.documentElement.scrollTop || 0;
+        const target = current + rect.top - offset;
+        window.scrollTo({ top: Math.max(target, 0), behavior: smooth ? 'smooth' : 'auto' });
+        return;
+      }
+      if (tries++ < maxTries) {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // Après chargement du chapitre : scroll vers verset cible (scrollTarget > highlighted) ou restauration Y
   useEffect(() => {
     if (!chapter || !selectedBook) return;
 
     const doScroll = () => {
-      const v = (highlightedVerse ?? scrollTargetVerse);
+      const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
-        const el = document.getElementById(`verse-${v}`);
-        if (el) {
-          const offset = NAV_H + cmdH + 8;
-          const rect = el.getBoundingClientRect();
-          const current = window.scrollY || document.documentElement.scrollTop || 0;
-          const target = current + rect.top - offset;
-          window.scrollTo({ top: Math.max(target, 0), behavior: 'smooth' });
-          // si c'était une cible simple (1/2/3), on nettoie la cible après le scroll
-          if (scrollTargetVerse !== null && highlightedVerse === null) {
-            setTimeout(() => setScrollTargetVerse(null), 350);
-          }
-          return;
+        scrollToVerseNumber(v, true);
+        // si c'était une cible simple (1/2/3), on nettoie après un court délai
+        if (scrollTargetVerse !== null && highlightedVerse === null) {
+          setTimeout(() => setScrollTargetVerse(null), 600);
         }
+        return;
       }
 
       // Sinon, restaure scroll chapitre si connu
@@ -409,6 +430,7 @@ export default function Reading() {
         );
         const y = raw ? parseInt(raw, 10) : 0;
         if (Number.isFinite(y) && y > 0) {
+          suppressAutoSaveUntil.current = Date.now() + 500;
           window.scrollTo({ top: y, behavior: 'auto' });
         } else {
           window.scrollTo({ top: 0, behavior: 'auto' });
@@ -416,7 +438,8 @@ export default function Reading() {
       } catch {}
     };
 
-    const t = setTimeout(doScroll, 60);
+    // mini délai pour laisser le DOM se peindre
+    const t = setTimeout(doScroll, 50);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
@@ -510,11 +533,15 @@ export default function Reading() {
   const stickyOffset = NAV_H + cmdH + 12;
 
   /* ===== Détection du verset d’ancrage au scroll (pour slots 1/2/3) =====
-     Choix du verset "le plus proche" du haut lisible pour éviter tout décalage */
+     Ignorée pendant un scroll programmatique (suppressAutoSaveUntil) */
   const scrollDebounce = useRef<number | null>(null);
   useEffect(() => {
     const onScroll = () => {
       if (!chapter || !selectedBook) return;
+
+      // ne pas enregistrer pendant scroll programmatique
+      if (Date.now() < suppressAutoSaveUntil.current) return;
+
       if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
       scrollDebounce.current = window.setTimeout(() => {
         try {
@@ -531,7 +558,6 @@ export default function Reading() {
               bestDist = dist;
               bestVerse = v.verse;
             } else if (top > offset && dist > bestDist) {
-              // on est passé sous la fenêtre, le "meilleur" est fixé
               break;
             }
           }
@@ -546,7 +572,7 @@ export default function Reading() {
             refreshSlots();
           }
         } catch {}
-      }, 200);
+      }, 180);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
@@ -981,4 +1007,3 @@ export default function Reading() {
     </div>
   );
 }
-
