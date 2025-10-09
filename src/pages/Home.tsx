@@ -6,6 +6,9 @@ import { BibleVerse } from '../types/bible';
 import { RefreshCw, Copy, Check } from 'lucide-react';
 import { saveSlot as saveQuickSlot } from '../services/readingSlots';
 
+const STORAGE_KEY = 'home_random_verse';
+const STORAGE_LANG_KEY = 'home_random_verse_lang';
+
 export default function Home() {
   const { state, navigateToVerse } = useApp();
   const { t } = useTranslation();
@@ -15,13 +18,32 @@ export default function Home() {
 
   const isDark = state.settings.theme === 'dark';
 
+  const saveVerseToSession = (v: BibleVerse, lang: string) => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(v));
+      sessionStorage.setItem(STORAGE_LANG_KEY, lang);
+    } catch {}
+  };
+
+  const loadVerseFromSession = (): BibleVerse | null => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as BibleVerse;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchRandomVerse = async () => {
     setLoading(true);
     try {
       const randomVerse = await getRandomVerse(state.settings.language);
       setVerse(randomVerse);
+      saveVerseToSession(randomVerse, state.settings.language);
     } catch (error) {
       console.error('Error fetching verse:', error);
+      setVerse(null);
     } finally {
       setLoading(false);
     }
@@ -47,14 +69,25 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Pré-chauffage (idempotent) + chargement du verset aléatoire
+    // Pré-chauffage (idempotent)
     warmBibleCache(state.settings.language);
-    fetchRandomVerse();
-  }, [state.settings.language]);
+
+    // 1) Essaye de reprendre le verset de la session (même si on a changé de menu)
+    const saved = loadVerseFromSession();
+
+    if (saved) {
+      setVerse(saved);
+      setLoading(false);
+    } else {
+      // 2) Nouvelle session / première ouverture -> on génère un nouveau verset
+      fetchRandomVerse();
+    }
+    // IMPORTANT : pas de dépendance sur la langue ici pour éviter de re-générer
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Clic sur la citation fixe -> ouvrir la lecture de Jérémie 23
   const openJeremiah23 = () => {
-    // on enregistre aussi dans la loupe
     try { saveQuickSlot(0, { book: 'Jeremiah', chapter: 23 }); } catch {}
     navigateToVerse('Jeremiah', 23);
   };
@@ -122,7 +155,7 @@ export default function Home() {
                 <span>{copied ? t('verseCopied') : t('copyVerse')}</span>
               </button>
             </div>
-           </div>
+          </div>
 
           {/* Citation fixe (cliquable) */}
           <div className="text-center mt-12">
