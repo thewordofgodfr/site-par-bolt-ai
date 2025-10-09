@@ -329,7 +329,7 @@ export default function Reading() {
     saveReadingPosition(book.name, slot.chapter);
   }
 
-  // Rendu bouton slot (mobile)
+  // Rendu bouton slot
   const renderSlotBtn = (i: number) => {
     const s = quickSlots[i];
     const filled = s !== null;
@@ -377,7 +377,7 @@ export default function Reading() {
           onTouchEnd={onTouchEnd}
           style={{ touchAction: 'manipulation' }}
         >
-          {/* Bandeau sticky (livre + chapitre + quick-slots mobile sur la même ligne) */}
+          {/* Bandeau sticky (livre + chapitre + quick-slots) */}
           {selectedBook && (
             <div
               ref={commandBarRef}
@@ -425,13 +425,18 @@ export default function Reading() {
                     </span>
                   </h2>
 
-                  {/* Quick-slots MOBILE à droite, sur la même ligne */}
+                  {/* Quick-slots MOBILE à droite */}
                   <div className="md:hidden ml-auto flex items-center gap-2">
                     {[0, 1, 2, 3].map(renderSlotBtn)}
                   </div>
 
-                  {/* Actions desktop */}
+                  {/* Actions + Quick-slots DESKTOP */}
                   <div className="hidden md:flex items-center gap-2 ml-auto">
+                    {/* Quick-slots desktop (ajoutés ici) */}
+                    <div className="flex items-center gap-2 mr-2">
+                      {[0, 1, 2, 3].map(renderSlotBtn)}
+                    </div>
+
                     <button
                       onClick={() => setShowBookPicker(true)}
                       className={`px-3 py-1.5 rounded-md text-sm font-semibold shadow-sm ${
