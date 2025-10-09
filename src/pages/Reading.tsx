@@ -42,10 +42,10 @@ export default function Reading() {
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Mise en évidence (depuis Recherche / Verset aléatoire) — utilisé UNIQUEMENT pour la loupe
+  // Mise en évidence (depuis Recherche / Verset aléatoire) — LOUPE uniquement
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
 
-  // Cible de scroll (sans surbrillance) — utilisé pour 1/2/3 et restaurations simples
+  // Cible de scroll (sans surbrillance) — pour 1/2/3 et restaurations simples
   const [scrollTargetVerse, setScrollTargetVerse] = useState<number | null>(null);
 
   // Sélection au tap
@@ -56,7 +56,7 @@ export default function Reading() {
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
   const [showChapterPicker, setShowChapterPicker] = useState<boolean>(false);
 
-  // Hint swipe (une seule fois par session) — durée augmentée
+  // Hint swipe (une seule fois par session)
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v3:${state.settings.language}`;
@@ -196,7 +196,7 @@ export default function Reading() {
   }
   useEffect(() => { refreshSlots(); }, []);
 
-  // Persiste automatiquement la position courante dans le slot actif (1/2/3) — verset inclus (maj fine par le scroll listener)
+  // Persiste automatiquement la position courante dans le slot actif (1/2/3)
   useEffect(() => {
     if (!selectedBook) return;
     if (activeSlot !== null && activeSlot !== 0) {
@@ -237,14 +237,14 @@ export default function Reading() {
       setSelectedChapter(slot.chapter);
       setSelectedVerses([]);
       setHighlightedVerse(slot.verse ?? null);     // highlight pour loupe
-      setScrollTargetVerse(slot.verse ?? null);    // et scroll précis
+      setScrollTargetVerse(slot.verse ?? null);    // cible de scroll
       try { window.scrollTo({ top: 0 }); } catch {}
       fetchChapter(b, slot.chapter);
       saveReadingPosition(b.name, slot.chapter);
       return;
     }
 
-    // Slots 1/2/3 => deviennent ACTIFS (auto-suivi) SANS surbrillance
+    // Slots 1/2/3 => ACTIFS (auto-suivi) SANS surbrillance
     setActiveSlot(i);
 
     // Si vide : mémorise l'emplacement courant
@@ -261,8 +261,8 @@ export default function Reading() {
     setSelectedBook(book);
     setSelectedChapter(slot.chapter);
     setSelectedVerses([]);
-    setHighlightedVerse(null);                          // pas de surbrillance
-    setScrollTargetVerse(slot.verse ?? null);           // on scrollera précisément
+    setHighlightedVerse(null);                    // pas de surbrillance
+    setScrollTargetVerse(slot.verse ?? null);     // on scrollera précisément
     try { window.scrollTo({ top: 0 }); } catch {}
     fetchChapter(book, slot.chapter);
     saveReadingPosition(book.name, slot.chapter);
@@ -285,7 +285,7 @@ export default function Reading() {
   useEffect(() => {
     if (hasLoadedContext) return;
 
-    // 1) Contexte direct (depuis Recherche/Accueil – ex: verset aléatoire) → LOUPE (highlight OK)
+    // 1) Contexte direct (recherche / verset aléatoire) → LOUPE (highlight OK)
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = resolveBook(state.readingContext.book);
       if (book) {
@@ -293,8 +293,8 @@ export default function Reading() {
         setSelectedChapter(state.readingContext.chapter);
         fetchChapter(book, state.readingContext.chapter);
         setSelectedVerses([]);
-        setHighlightedVerse(state.readingContext.verse ?? null);   // highlight (loupe)
-        setScrollTargetVerse(state.readingContext.verse ?? null);  // scroll précis
+        setHighlightedVerse(state.readingContext.verse ?? null);
+        setScrollTargetVerse(state.readingContext.verse ?? null);
         setTapped(0);
         setActiveSlot(null);
         saveReadingPosition(book.name, state.readingContext.chapter);
@@ -304,7 +304,7 @@ export default function Reading() {
       }
     }
 
-    // 1bis) Si la dernière action était la LOUPE → restaurer le slot 0 avec surbrillance
+    // 1bis) Dernière action = LOUPE
     try {
       const rawTapped = localStorage.getItem('twog:qs:lastTapped');
       if (rawTapped === '0') {
@@ -316,8 +316,8 @@ export default function Reading() {
             setSelectedChapter(s0.chapter);
             fetchChapter(b, s0.chapter);
             setSelectedVerses([]);
-            setHighlightedVerse(s0.verse ?? null);   // highlight
-            setScrollTargetVerse(s0.verse ?? null);  // scroll précis
+            setHighlightedVerse(s0.verse ?? null);
+            setScrollTargetVerse(s0.verse ?? null);
             setTapped(0);
             setActiveSlot(null);
             setHasLoadedContext(true);
@@ -327,7 +327,7 @@ export default function Reading() {
       }
     } catch {}
 
-    // 1ter) Sinon, si un slot ACTIF (1..3) a été mémorisé → restaurer ce slot et allumer le bouton (sans highlight)
+    // 1ter) Sinon slot ACTIF 1..3
     try {
       const rawActive = localStorage.getItem('twog:qs:lastActive');
       const i = rawActive ? parseInt(rawActive, 10) : NaN;
@@ -340,8 +340,8 @@ export default function Reading() {
             setSelectedChapter(s.chapter);
             fetchChapter(b, s.chapter);
             setSelectedVerses([]);
-            setHighlightedVerse(null);                     // pas de surbrillance pour 1/2/3
-            setScrollTargetVerse(s.verse ?? null);         // scroll précis
+            setHighlightedVerse(null);
+            setScrollTargetVerse(s.verse ?? null);
             setActiveSlot(i);
             setLastTappedSlot(i);
             setHasLoadedContext(true);
@@ -351,7 +351,7 @@ export default function Reading() {
       }
     } catch {}
 
-    // 2) Sinon : reprendre dernière lecture (si dispo) — sans highlight
+    // 2) Dernière lecture (fallback)
     const last = state.settings.lastReadingPosition;
     if (last && last.book && last.chapter > 0) {
       const book = resolveBook(last.book);
@@ -360,14 +360,14 @@ export default function Reading() {
         setSelectedChapter(last.chapter);
         fetchChapter(book, last.chapter);
         setSelectedVerses([]);
-        setHighlightedVerse(null);                         // pas de surbrillance
+        setHighlightedVerse(null);
         setScrollTargetVerse((last as any).verse ?? null);
         setHasLoadedContext(true);
         return;
       }
     }
 
-    // 3) Première ouverture → John 1 (fallback sûr)
+    // 3) Première ouverture → John 1
     const john = resolveBook('John');
     if (john) {
       setSelectedBook(john);
@@ -382,20 +382,21 @@ export default function Reading() {
   /* ============ Scroll ciblé ============ */
   // 1) on coupe l’enregistrement auto pendant le scroll programmatique
   const suppressAutoSaveUntil = useRef<number>(0);
-  // 2) on empêche une **2ᵉ passe** de l’effet de réécraser aussitôt (retour vers verset 1)
+  // 2) et on empêche le fallback de réécrire pendant la même fenêtre
   const programmaticScrollUntil = useRef<number>(0);
 
-  function scrollToVerseNumber(v: number, smooth = true, extraTop = 0) {
-    // Empêche le listener scroll d’écrire pendant qu’on bouge
+  function scrollToVerseNumber(v: number, smooth: boolean, extraTop = 0) {
+    // fenêtre de protection plus longue (enchaînements 3→2→1)
     const now = Date.now();
-    suppressAutoSaveUntil.current = now + 1200;
-    programmaticScrollUntil.current = now + 1200;
+    const lockMs = 2500;
+    suppressAutoSaveUntil.current = now + lockMs;
+    programmaticScrollUntil.current = now + lockMs;
 
-    const baseOffset = NAV_H + cmdH + 14; // marge de base
+    const baseOffset = NAV_H + cmdH + 14; // marge de base sous la barre
     const offset = baseOffset + extraTop; // +extraTop pour la loupe
 
     let tries = 0;
-    const maxTries = 24; // ~400ms si 16ms/frame
+    const maxTries = 24;
 
     const tick = () => {
       const el = document.getElementById(`verse-${v}`);
@@ -411,24 +412,21 @@ export default function Reading() {
     requestAnimationFrame(tick);
   }
 
-  // Après chargement du chapitre : scroll vers verset cible (scrollTarget > highlighted) ou restauration Y
+  // Après chargement du chapitre : scroll vers verset cible (1/2/3 = instantané, loupe = smooth)
   useEffect(() => {
     if (!chapter || !selectedBook) return;
 
     const doScroll = () => {
       const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
-        // si c’est la loupe, on ajoute un petit offset supplémentaire (~1 ligne)
         const isHighlight = highlightedVerse !== null && v === highlightedVerse;
-        scrollToVerseNumber(v, true, isHighlight ? 12 : 0);
-        // si c'était une cible simple (1/2/3), on nettoie après un court délai
-        if (scrollTargetVerse !== null && highlightedVerse === null) {
-          setTimeout(() => setScrollTargetVerse(null), 600);
-        }
+        // mémoires 1/2/3 → scroll instantané ; loupe → smooth + offset plus fort
+        scrollToVerseNumber(v, isHighlight, isHighlight ? 16 : 0);
+        // on garde scrollTargetVerse (pas de reset rapide) pour éviter un fallback tardif
         return;
       }
 
-      // Si on vient JUSTE de scroller nous-mêmes, ne fais pas de fallback (évitons le retour au 1)
+      // Si on vient JUSTE de scroller nous-mêmes, ne fais pas de fallback
       if (Date.now() < programmaticScrollUntil.current) return;
 
       // Sinon, restaure scroll chapitre si connu
@@ -439,8 +437,9 @@ export default function Reading() {
         const y = raw ? parseInt(raw, 10) : 0;
         if (Number.isFinite(y) && y > 0) {
           const now = Date.now();
-          suppressAutoSaveUntil.current = now + 500;
-          programmaticScrollUntil.current = now + 500;
+          const lockMs = 800;
+          suppressAutoSaveUntil.current = now + lockMs;
+          programmaticScrollUntil.current = now + lockMs;
           window.scrollTo({ top: y, behavior: 'auto' });
         } else {
           window.scrollTo({ top: 0, behavior: 'auto' });
@@ -448,19 +447,10 @@ export default function Reading() {
       } catch {}
     };
 
-    // mini délai pour laisser le DOM se peindre
     const t = setTimeout(doScroll, 50);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
-
-  // Extinction de la surbrillance (20s) — ne concerne que la loupe
-  useEffect(() => {
-    if (highlightedVerse !== null) {
-      const t = setTimeout(() => setHighlightedVerse(null), 20000);
-      return () => clearTimeout(t);
-    }
-  }, [highlightedVerse]);
 
   // ===== Sélection par tap verset =====
   const toggleSelectVerse = (num: number) => {
@@ -519,11 +509,11 @@ export default function Reading() {
     if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
     const t = e.touches[0];
     const dx = t.clientX - swipeStart.current.x;
-       const dy = t.clientY - swipeStart.current.y;
+    const dy = t.clientY - swipeStart.current.y;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Navigation HORIZONTALE uniquement (chapitre suivant/précédent avec passage de livre)
+    // Navigation HORIZONTALE uniquement
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
       if (dx < 0) {
@@ -543,7 +533,7 @@ export default function Reading() {
   const stickyOffset = NAV_H + cmdH + 12;
 
   /* ===== Détection du verset d’ancrage au scroll (pour slots 1/2/3) =====
-     Ignorée pendant un scroll programmatique (suppressAutoSaveUntil) */
+     Ignorée pendant un scroll programmatique */
   const scrollDebounce = useRef<number | null>(null);
   useEffect(() => {
     const onScroll = () => {
@@ -556,23 +546,19 @@ export default function Reading() {
       scrollDebounce.current = window.setTimeout(() => {
         try {
           const offset = NAV_H + cmdH + 16; // haut lisible
+          // -> algorithme stable : plus grand verset dont le top est au-dessus (ou égal) à l'offset
           let bestVerse = 1;
-          let bestDist = Infinity;
-
           for (const v of chapter.verses) {
             const el = document.getElementById(`verse-${v.verse}`);
             if (!el) continue;
-            const top = el.getBoundingClientRect().top; // relatif viewport
-            const dist = Math.abs(top - offset);
-            if (dist < bestDist) {
-              bestDist = dist;
+            const top = el.getBoundingClientRect().top;
+            if (top - offset <= 0) {
               bestVerse = v.verse;
-            } else if (top > offset && dist > bestDist) {
+            } else {
               break;
             }
           }
 
-          // Sauvegarde dans le slot ACTIF (1..3) la position exacte — sans highlight
           if (activeSlot && activeSlot !== 0) {
             saveQuickSlot(activeSlot, {
               book: selectedBook.name,
