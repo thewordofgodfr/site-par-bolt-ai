@@ -189,17 +189,27 @@ export default function Reading() {
   }
   useEffect(() => { refreshSlots(); }, []);
 
-  // Persiste automatiquement la position courante dans le slot actif (1/2/3)
+  // Persiste automatiquement la position courante dans le slot actif (1/2/3) — incluant le verset d’ancrage
   useEffect(() => {
     if (!selectedBook) return;
     if (activeSlot !== null && activeSlot !== 0) {
       try {
+        // On met à jour sans verset ici, le verset sera affiné par le listener de scroll
         saveQuickSlot(activeSlot, { book: selectedBook.name, chapter: selectedChapter });
         refreshSlots();
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBook?.name, selectedChapter, activeSlot]);
+
+  // Persister l’info "dernier slot ACTIF (1..3)" pour rallumer le bouton au retour
+  useEffect(() => {
+    try {
+      if (activeSlot && activeSlot !== 0) {
+        localStorage.setItem('twog:qs:lastActive', String(activeSlot));
+      }
+    } catch {}
+  }, [activeSlot]);
 
   function setTapped(i: number) {
     setLastTappedSlot(i);
@@ -223,7 +233,8 @@ export default function Reading() {
       setHighlightedVerse(slot.verse ?? null);
       try { window.scrollTo({ top: 0 }); } catch {}
       fetchChapter(b, slot.chapter);
-      saveReadingPosition(b.name, slot.chapter); // important pour la restauration après navigation
+      // garder aussi la "dernière lecture" pour fallback
+      saveReadingPosition(b.name, slot.chapter);
       return;
     }
 
@@ -289,8 +300,8 @@ export default function Reading() {
 
     // 1bis) Si la dernière action était la LOUPE → restaurer le slot 0 avec surbrillance
     try {
-      const raw = localStorage.getItem('twog:qs:lastTapped');
-      if (raw === '0') {
+      const rawTapped = localStorage.getItem('twog:qs:lastTapped');
+      if (rawTapped === '0') {
         const s0 = readQuickSlot(0);
         if (s0) {
           const b = resolveBook(s0.book);
@@ -302,6 +313,29 @@ export default function Reading() {
             setHighlightedVerse(s0.verse ?? null);
             setTapped(0);        // visuel loupe
             setActiveSlot(null); // pas d'auto-suivi 1..3
+            setHasLoadedContext(true);
+            return;
+          }
+        }
+      }
+    } catch {}
+
+    // 1ter) Sinon, si un slot ACTIF (1..3) a été mémorisé → restaurer ce slot et allumer le bouton
+    try {
+      const rawActive = localStorage.getItem('twog:qs:lastActive');
+      const i = rawActive ? parseInt(rawActive, 10) : NaN;
+      if (i === 1 || i === 2 || i === 3) {
+        const s = readQuickSlot(i);
+        if (s) {
+          const b = resolveBook(s.book);
+          if (b) {
+            setSelectedBook(b);
+            setSelectedChapter(s.chapter);
+            fetchChapter(b, s.chapter);
+            setSelectedVerses([]);
+            setHighlightedVerse(s.verse ?? null);
+            setActiveSlot(i);
+            setLastTappedSlot(i);
             setHasLoadedContext(true);
             return;
           }
@@ -464,6 +498,46 @@ export default function Reading() {
   // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
+  /* ===== Détection du verset d’ancrage au scroll (pour slots 1/2/3) ===== */
+  const scrollDebounce = useRef<number | null>(null);
+  useEffect(() => {
+    const onScroll = () => {
+      if (!chapter || !selectedBook) return;
+      if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
+      scrollDebounce.current = window.setTimeout(() => {
+        try {
+          const offset = NAV_H + cmdH + 16;
+          let bestVerse = 1;
+          for (const v of chapter.verses) {
+            const el = document.getElementById(`verse-${v.verse}`);
+            if (!el) continue;
+            const top = el.getBoundingClientRect().top;
+            if (top - offset <= 0) {
+              bestVerse = v.verse;
+            } else {
+              break; // DOM en ordre, on peut sortir
+            }
+          }
+          // Sauvegarde dans le slot ACTIF (1..3) la position exacte
+          if (activeSlot && activeSlot !== 0) {
+            saveQuickSlot(activeSlot, {
+              book: selectedBook.name,
+              chapter: selectedChapter,
+              verse: bestVerse,
+            });
+            refreshSlots();
+          }
+        } catch {}
+      }, 200);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH]);
+
   // ====== Rendu
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
@@ -545,7 +619,7 @@ export default function Reading() {
                       const title =
                         i === 0
                           ? (s ? `Recherche : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : 'Recherche (vide)')
-                          : (s ? `Mémoire ${i} : ${s.book} ${s.chapter}` : `Mémoire ${i} (vide)`);
+                          : (s ? `Mémoire ${i} : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : `Mémoire ${i} (vide)`);
                       return (
                         <button
                           key={`qs-m-${i}`}
@@ -583,7 +657,7 @@ export default function Reading() {
                         const title =
                           i === 0
                             ? (s ? `Recherche : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : 'Recherche (vide)')
-                            : (s ? `Mémoire ${i} : ${s.book} ${s.chapter}` : `Mémoire ${i} (vide)`);
+                            : (s ? `Mémoire ${i} : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : `Mémoire ${i} (vide)`);
                         return (
                           <button
                             key={`qs-d-${i}`}
@@ -889,3 +963,4 @@ export default function Reading() {
     </div>
   );
 }
+
