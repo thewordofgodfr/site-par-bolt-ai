@@ -74,12 +74,12 @@ export default function Reading() {
   // ===== Thèmes couleurs pour slots 1/2/3 (et boutons Livre/Chapitre mobile) =====
   type SlotKey = 1 | 2 | 3;
   const SLOT_THEMES: Record<SlotKey, {
-    solid: string;            // bouton plein
+    solid: string;
     solidHover: string;
-    ring: string;             // anneau actif
-    mobileBtn: string;        // boutons Livre/Chapitre mobile
+    ring: string;
+    mobileBtn: string;
     mobileBtnHover: string;
-    lightPaper: string;       // léger fond du contenu en thème clair
+    lightPaper: string;
   }> = {
     1: {
       solid: 'bg-blue-600 text-white',
@@ -106,10 +106,6 @@ export default function Reading() {
       lightPaper: 'bg-emerald-50',
     },
   };
-  const activeTheme = ((): (typeof SLOT_THEMES)[SlotKey] | null => {
-    if (state && (1 === (state as any))) return null; // TS silence
-    return (activeSlot === 1 || activeSlot === 2 || activeSlot === 3) ? SLOT_THEMES[activeSlot] : null;
-  })();
 
   // ====== Chargement du chapitre ======
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
@@ -169,7 +165,6 @@ export default function Reading() {
       handleChapterSelect(selectedChapter + 1);
       return;
     }
-    // Dernier chapitre → livre suivant si dispo
     const idx = books.findIndex(b => b.name === selectedBook.name);
     if (idx >= 0 && idx < books.length - 1) {
       const nextBook = books[idx + 1];
@@ -191,7 +186,6 @@ export default function Reading() {
       handleChapterSelect(selectedChapter - 1);
       return;
     }
-    // Premier chapitre → livre précédent si dispo
     const idx = books.findIndex(b => b.name === selectedBook.name);
     if (idx > 0) {
       const prevBook = books[idx - 1];
@@ -309,6 +303,12 @@ export default function Reading() {
     saveReadingPosition(book.name, slot.chapter);
   }
 
+  // >>>>>>> ICI : calcul de activeTheme APRÈS l'init de activeSlot
+  const activeTheme =
+    (activeSlot === 1 || activeSlot === 2 || activeSlot === 3)
+      ? SLOT_THEMES[activeSlot as SlotKey]
+      : null;
+
   // ===== Navigation contextuelle & restauration dernière lecture =====
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
@@ -421,20 +421,17 @@ export default function Reading() {
   }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
 
   /* ============ Scroll ciblé ============ */
-  // 1) on coupe l’enregistrement auto pendant le scroll programmatique
   const suppressAutoSaveUntil = useRef<number>(0);
-  // 2) et on empêche le fallback de réécrire pendant la même fenêtre
   const programmaticScrollUntil = useRef<number>(0);
 
   function scrollToVerseNumber(v: number, smooth: boolean, extraTop = 0) {
-    // fenêtre de protection plus longue (enchaînements 3→2→1)
     const now = Date.now();
     const lockMs = 2500;
     suppressAutoSaveUntil.current = now + lockMs;
     programmaticScrollUntil.current = now + lockMs;
 
-    const baseOffset = NAV_H + cmdH + 14; // marge de base sous la barre
-    const offset = baseOffset + extraTop; // +extraTop pour la loupe
+    const baseOffset = NAV_H + cmdH + 14;
+    const offset = baseOffset + extraTop;
 
     let tries = 0;
     const maxTries = 24;
@@ -453,8 +450,6 @@ export default function Reading() {
     requestAnimationFrame(tick);
   }
 
-  // Après chargement du chapitre : scroll vers verset cible
-  // → highlight (loupe) : smooth + offset un peu plus grand pour VOIR le numéro
   useEffect(() => {
     if (!chapter || !selectedBook) return;
 
@@ -462,15 +457,11 @@ export default function Reading() {
       const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
         const isHighlight = highlightedVerse !== null && v === highlightedVerse;
-        // offset highlight augmenté (avant ~16) → ~26px
-        scrollToVerseNumber(v, isHighlight, isHighlight ? 26 : 0);
+        scrollToVerseNumber(v, isHighlight, isHighlight ? 26 : 0); // offset highlight augmenté
         return;
       }
-
-      // Si on vient JUSTE de scroller nous-mêmes, ne fais pas de fallback
       if (Date.now() < programmaticScrollUntil.current) return;
 
-      // Sinon, restaure scroll chapitre si connu
       try {
         const raw = sessionStorage.getItem(
           `twog:reading:scroll:${state.settings.language}:${selectedBook.name}:${selectedChapter}`
@@ -559,7 +550,6 @@ export default function Reading() {
         });
         setSelectedVerses([]);
       } else {
-        // fallback: copie dans le presse-papiers
         const ok = await copyToClipboard(shareText);
         if (ok) {
           setCopiedKey('shared-fallback');
@@ -590,7 +580,6 @@ export default function Reading() {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Navigation HORIZONTALE uniquement
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
       if (dx < 0) {
@@ -609,33 +598,26 @@ export default function Reading() {
   // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
-  /* ===== Détection du verset d’ancrage au scroll (pour slots 1/2/3) =====
-     + Détection "bas de page" pour la loupe (aléatoire) */
+  /* ===== Détection du verset d’ancrage au scroll (pour slots 1/2/3)
+     + Détection "bas de page" pour la loupe (aléatoire) ===== */
   const scrollDebounce = useRef<number | null>(null);
   const [showBottomRandom, setShowBottomRandom] = useState(false);
   useEffect(() => {
     const onScroll = () => {
       if (!chapter || !selectedBook) return;
-
-      // ne pas enregistrer pendant scroll programmatique
       if (Date.now() < suppressAutoSaveUntil.current) return;
 
-      // --- Debounce général
       if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
       scrollDebounce.current = window.setTimeout(() => {
         try {
-          const offset = NAV_H + cmdH + 16; // haut lisible
-          // -> algorithme stable : plus grand verset dont le top est au-dessus (ou égal) à l'offset
+          const offset = NAV_H + cmdH + 16;
           let bestVerse = 1;
           for (const v of chapter.verses) {
             const el = document.getElementById(`verse-${v.verse}`);
             if (!el) continue;
             const top = el.getBoundingClientRect().top;
-            if (top - offset <= 0) {
-              bestVerse = v.verse;
-            } else {
-              break;
-            }
+            if (top - offset <= 0) bestVerse = v.verse;
+            else break;
           }
 
           if (activeSlot && activeSlot !== 0) {
@@ -647,7 +629,6 @@ export default function Reading() {
             refreshSlots();
           }
 
-          // Détection "bas de page" (loupe uniquement)
           const nearBottom =
             window.innerHeight + (window.scrollY || document.documentElement.scrollTop || 0)
             >= (document.documentElement.scrollHeight || document.body.scrollHeight) - 180;
@@ -667,7 +648,6 @@ export default function Reading() {
   // Générer un nouveau verset aléatoire (mode Loupe)
   const pickNewRandom = async () => {
     try {
-      // Choix aléatoire d'un livre / chapitre / verset, puis affichage + sauvegarde dans slot 0
       const all = books;
       const b = all[Math.floor(Math.random() * all.length)];
       const chapNum = 1 + Math.floor(Math.random() * b.chapters);
@@ -1000,7 +980,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Overlay Livres — colonnes verticales (remplit de haut en bas) */}
+          {/* Overlay Livres */}
           {showBookPicker && (
             <div className="fixed inset-0 z-50">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowBookPicker(false)} aria-hidden="true" />
@@ -1014,7 +994,6 @@ export default function Reading() {
                   </button>
                 </div>
 
-                {/* Ancien Testament */}
                 <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('oldTestament')}</h4>
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-2 mb-6">
                   {oldTestamentBooks.map(book => (
@@ -1032,7 +1011,6 @@ export default function Reading() {
                   ))}
                 </div>
 
-                {/* Nouveau Testament */}
                 <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('newTestament')}</h4>
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-2 pb-10">
                   {newTestamentBooks.map(book => (
