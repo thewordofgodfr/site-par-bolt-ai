@@ -539,7 +539,7 @@ export default function Reading() {
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
     const body = chosen.map(v => `${v.text}`).join('\n');
 
-    const shareUrl = 'https://www.theword.fr';
+    const shareUrl = 'www.theword.fr';
     const shareText = `${ref}\n${body}\n\n${shareUrl}`;
 
     try {
