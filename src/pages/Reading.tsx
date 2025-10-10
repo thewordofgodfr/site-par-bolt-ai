@@ -81,13 +81,14 @@ export default function Reading() {
     mobileBtnHover: string;
     lightPaper: string;
   }> = {
+    // Slot 1 -> AMBRE (pour ne pas “voler” le bleu réservé à la loupe)
     1: {
-      solid: 'bg-blue-600 text-white',
-      solidHover: 'hover:bg-blue-500',
-      ring: 'ring-blue-400',
-      mobileBtn: 'bg-blue-600 text-white',
-      mobileBtnHover: 'hover:bg-blue-500',
-      lightPaper: 'bg-blue-50',
+      solid: 'bg-amber-600 text-white',
+      solidHover: 'hover:bg-amber-500',
+      ring: 'ring-amber-400',
+      mobileBtn: 'bg-amber-600 text-white',
+      mobileBtnHover: 'hover:bg-amber-500',
+      lightPaper: 'bg-amber-50',
     },
     2: {
       solid: 'bg-violet-600 text-white',
@@ -303,7 +304,7 @@ export default function Reading() {
     saveReadingPosition(book.name, slot.chapter);
   }
 
-  // >>>>>>> ICI : calcul de activeTheme APRÈS l'init de activeSlot
+  // Calcul du thème actif APRÈS l'init de activeSlot
   const activeTheme =
     (activeSlot === 1 || activeSlot === 2 || activeSlot === 3)
       ? SLOT_THEMES[activeSlot as SlotKey]
@@ -527,7 +528,7 @@ export default function Reading() {
     }
   };
 
-  // Partage sélection (Web Share API si dispo, sinon copie + toast)
+  // Partage sélection (Web Share API si dispo, sinon copie + toast) — lien unique
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -538,15 +539,15 @@ export default function Reading() {
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
     const body = chosen.map(v => `${v.text}`).join('\n');
 
-    const shareText = `${ref}\n${body}\n\nhttps://www.theword.fr/`;
+    const shareUrl = 'https://www.theword.fr';
+    const shareText = `${ref}\n${body}\n\n${shareUrl}`;
 
     try {
       const nav = navigator as any;
       if (nav?.share) {
         await nav.share({
           title: ref,
-          text: shareText,
-          url: 'https://www.theword.fr/',
+          text: shareText, // pas de champ url => évite le doublon
         });
         setSelectedVerses([]);
       } else {
@@ -749,10 +750,11 @@ export default function Reading() {
                       const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                       let cls = '';
                       if (i === 0) {
+                        // Loupe = BLEU (plus indigo)
                         cls = isDark
-                          ? `border border-indigo-400/60 text-indigo-200`
-                          : `bg-white border border-indigo-300 text-indigo-700`;
-                        if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-indigo-400';
+                          ? `border border-blue-400/60 text-blue-200`
+                          : `bg-white border border-blue-300 text-blue-700`;
+                        if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-blue-400';
                       } else {
                         const theme = SLOT_THEMES[i as SlotKey];
                         cls = filled ? `${theme.solid} ${theme.solidHover}` :
@@ -787,10 +789,11 @@ export default function Reading() {
                         const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                         let cls = '';
                         if (i === 0) {
+                          // Loupe = BLEU (plus indigo)
                           cls = isDark
-                            ? `border border-indigo-400/60 text-indigo-200`
-                            : `bg-white border border-indigo-300 text-indigo-700`;
-                          if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-indigo-400';
+                            ? `border border-blue-400/60 text-blue-200`
+                            : `bg-white border border-blue-300 text-blue-700`;
+                          if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-blue-400';
                         } else {
                           const theme = SLOT_THEMES[i as SlotKey];
                           cls = filled ? `${theme.solid} ${theme.solidHover}` :
@@ -1114,11 +1117,13 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Hint swipe — 1/2 largeur, sans clignoter, 3s, un seul mot */}
+          {/* Hint swipe — 1/2 largeur, sans clignoter, 3s, un seul mot + petites flèches */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
-              <div className="w-1/2 max-w-xs text-center px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white">
+              <div className="w-1/2 max-w-xs text-center px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white flex items-center justify-center">
+                <span className="opacity-90 mr-2">◀</span>
                 {state.settings.language === 'fr' ? 'Glissez' : 'Swipe'}
+                <span className="opacity-90 ml-2">▶</span>
               </div>
             </div>
           )}
