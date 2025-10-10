@@ -7,11 +7,11 @@ export default function QuickSlotsHelp() {
   const isDark = state.settings.theme === 'dark';
   const lang = state.settings.language === 'fr' ? 'fr' : 'en';
 
-  // Tailles fixes et soignées pour ce bloc (volontairement indépendantes du réglage global)
-  const TITLE_SIZE = 20; // titre légèrement plus grand
-  const BODY_SIZE = 18;  // demandé : 18px suffisant
+  // Tailles fixes pour ce bloc (indépendantes du réglage global)
+  const TITLE_SIZE = 20;
+  const BODY_SIZE = 18;
   const LINE_HEIGHT = 1.7;
-  const CHIP = 40;       // pastilles d’aperçu (modéré)
+  const CHIP = 40;
 
   const copy = {
     fr: {
@@ -44,7 +44,7 @@ export default function QuickSlotsHelp() {
     <section
       className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl p-5 md:p-6 shadow-lg`}
     >
-      {/* Titre (sans icônes) */}
+      {/* Titre */}
       <header className="flex items-center gap-3">
         <Info className={`${isDark ? 'text-blue-300' : 'text-blue-700'}`} size={18} />
         <h3
@@ -55,7 +55,7 @@ export default function QuickSlotsHelp() {
         </h3>
       </header>
 
-      {/* Aperçu juste sous le titre */}
+      {/* Aperçu */}
       <div className="mt-3 mb-4">
         <div
           className={`flex items-center gap-8 rounded-2xl px-4 py-3 border ${
@@ -63,10 +63,10 @@ export default function QuickSlotsHelp() {
           }`}
           aria-label={lang === 'fr' ? 'Illustration des raccourcis' : 'Shortcuts illustration'}
         >
-          {/* Loupe */}
+          {/* Loupe (bleu, comme dans Lecture) */}
           <div
             className={`rounded-full flex items-center justify-center border ${
-              isDark ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-800'
+              isDark ? 'bg-gray-800 border-blue-400/60 text-blue-200' : 'bg-white border-blue-300 text-blue-700'
             }`}
             style={{ width: CHIP, height: CHIP }}
             title={lang === 'fr' ? 'Dernier passage' : 'Last passage'}
@@ -74,12 +74,12 @@ export default function QuickSlotsHelp() {
             <SearchIcon size={18} />
           </div>
 
-          {/* 1 actif */}
+          {/* 1 actif — AMBRE */}
           <div
             className={`rounded-full flex items-center justify-center font-semibold ring-2 border ${
               isDark
-                ? 'bg-blue-600 text-white ring-blue-300/40 border-blue-600'
-                : 'bg-blue-600 text-white ring-blue-200 border-blue-600'
+                ? 'bg-amber-600 text-white ring-amber-300/50 border-amber-600'
+                : 'bg-amber-600 text-white ring-amber-300 border-amber-600'
             }`}
             style={{ width: CHIP, height: CHIP, fontSize: 16 }}
             title={lang === 'fr' ? 'Raccourci 1 (actif)' : 'Shortcut 1 (active)'}
@@ -87,23 +87,31 @@ export default function QuickSlotsHelp() {
             1
           </div>
 
-          {/* 2 & 3 inactifs */}
-          {[2, 3].map((n) => (
-            <div
-              key={n}
-              className={`rounded-full flex items-center justify-center font-semibold border ${
-                isDark ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white text-gray-800 border-gray-300'
-              }`}
-              style={{ width: CHIP, height: CHIP, fontSize: 16 }}
-              title={(lang === 'fr' ? 'Raccourci ' : 'Shortcut ') + n}
-            >
-              {n}
-            </div>
-          ))}
+          {/* 2 — VIOLET (inactif mais coloré) */}
+          <div
+            className={`rounded-full flex items-center justify-center font-semibold border ${
+              isDark ? 'bg-violet-600 text-white border-violet-600' : 'bg-violet-600 text-white border-violet-600'
+            }`}
+            style={{ width: CHIP, height: CHIP, fontSize: 16 }}
+            title={(lang === 'fr' ? 'Raccourci ' : 'Shortcut ') + '2'}
+          >
+            2
+          </div>
+
+          {/* 3 — ÉMERAUDE (inactif mais coloré) */}
+          <div
+            className={`rounded-full flex items-center justify-center font-semibold border ${
+              isDark ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-emerald-600 text-white border-emerald-600'
+            }`}
+            style={{ width: CHIP, height: CHIP, fontSize: 16 }}
+            title={(lang === 'fr' ? 'Raccourci ' : 'Shortcut ') + '3'}
+          >
+            3
+          </div>
         </div>
       </div>
 
-      {/* Intro + liste en 18px, présentation soignée */}
+      {/* Intro + liste en 18px */}
       <p
         className={`${isDark ? 'text-gray-100' : 'text-gray-900'}`}
         style={{ fontSize: `${BODY_SIZE}px`, lineHeight: LINE_HEIGHT, marginBottom: '14px' }}
