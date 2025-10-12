@@ -40,3 +40,30 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+// Enregistrer le SW avec MAJ immédiate
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw-v7.js', { scope: '/' }).then(reg => {
+      reg.update(); // vérifie tout de suite s'il y a une nouvelle version
+
+      // Si un SW est en attente, on le fait passer actif
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+      // Quand une nouvelle version est installée, on la prend et on recharge
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw?.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    });
+
+    // Quand le contrôleur change → rechargement automatique
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
+  });
+}
+
