@@ -54,4 +54,3 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-
