@@ -4,74 +4,67 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Force http->https et bloque tout mixed content résiduel -->
+    <!-- Force http->https et bloque tout mixed content -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content">
 
-    <!-- SEO -->
     <title>TheWord.fr — Bible en ligne (LSG 1910 & KJV)</title>
     <meta name="description" content="The Word : lecture de la Bible en français (LSG 1910) et en anglais (KJV). Recherche rapide, verset aléatoire, lecture chapitre par chapitre. Gratuit et sans inscription.">
-    <link rel="canonical" href="https://www.theword.fr/" />
-    <meta name="theme-color" content="#2196f3" />
+    <link rel="canonical" href="https://www.theword.fr/"/>
+    <meta name="theme-color" content="#2196f3"/>
 
-    <!-- Favicons / PWA -->
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="/logo192.png">
     <link rel="manifest" href="/site.webmanifest">
 
-    <!-- Open Graph -->
     <meta property="og:title" content="TheWord.fr — Bible en ligne (LSG 1910 & KJV)">
     <meta property="og:description" content="Lire la Bible en français (LSG 1910) et en anglais (KJV). Verset aléatoire, recherche, lecture par chapitre.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.theword.fr/">
     <meta property="og:image" content="https://www.theword.fr/logo512.png">
 
-    <!-- PWA -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
-    <!-- RÉÉCRITURE AUTOMATIQUE des URLs http:// en https:// (balises + fetch + XHR) -->
+    <!-- Désactive le SW (évite tout vieux cache) -->
     <script>
-      (function () {
-        const toHttps = (u) => (typeof u === 'string' && u.startsWith('http://')) ? ('https://' + u.slice(7)) : u;
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+        caches && caches.keys && caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+    </script>
 
-        // Réécrire attributs src/href/srcset sur éléments existants
-        function rewriteAttrs(el) {
-          ['src','href','srcset'].forEach(a => {
-            const v = el.getAttribute && el.getAttribute(a);
-            if (v && v.startsWith('http://')) el.setAttribute(a, toHttps(v));
-          });
+    <!-- Bandeau visuel qui liste les URLs http:// (sans console) -->
+    <style>
+      #mixed-report{position:fixed;left:0;right:0;top:0;z-index:99999;
+        font:14px/1.4 system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#fff;background:#c62828;
+        padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+      #mixed-report.good{background:#2e7d32}
+      #mixed-report code{background:rgba(255,255,255,.15);padding:2px 6px;border-radius:6px}
+      #mixed-report small{opacity:.85}
+    </style>
+    <script>
+      (function(){
+        const toHttps=u=>typeof u==='string'&&u.startsWith('http://')?('https://'+u.slice(7)):u;
+        function collect() {
+          const attrs=['src','href','srcset'];
+          const dom=[...document.querySelectorAll('img,script,link,iframe,source,video,audio')]
+            .map(el=>attrs.map(a=>el.getAttribute(a)).find(Boolean))
+            .filter(u=>u&&u.startsWith('http://'));
+          const perf=(performance.getEntriesByType('resource')||[])
+            .map(r=>r.name).filter(u=>u&&u.startsWith('http://'));
+          return [...new Set([...dom, ...perf])];
         }
-        function rewriteAllInDOM() {
-          document.querySelectorAll('img,script,link,iframe,source,video,audio').forEach(rewriteAttrs);
+        function show(urls){
+          const bar=document.createElement('div');bar.id='mixed-report';
+          if(!urls.length){ bar.className='good'; bar.innerHTML='✅ Connexion sécurisée : aucun contenu mixte détecté.'; }
+          else{
+            bar.innerHTML='<b>Contenu non sécurisé détecté</b> – remplace ces adresses par <code>https://</code> ou des chemins relatifs :<br>'
+              + urls.map(u=>`• <code>${u}</code>`).join('<br>')+
+              '<br><small>Après correction, redeploye puis recharge.</small>';
+          }
+          document.addEventListener('DOMContentLoaded',()=>document.body.prepend(bar));
         }
-        rewriteAllInDOM();
-
-        // Observer les nouveaux nœuds / changements d'attributs
-        const mo = new MutationObserver(muts => {
-          muts.forEach(m => {
-            if (m.type === 'attributes' && ['src','href','srcset'].includes(m.attributeName)) rewriteAttrs(m.target);
-            if (m.type === 'childList') m.addedNodes.forEach(n => { if (n.nodeType === 1) rewriteAttrs(n); });
-          });
-        });
-        mo.observe(document.documentElement, {subtree:true, attributes:true, attributeFilter:['src','href','srcset'], childList:true});
-
-        // Patch fetch
-        const _fetch = window.fetch;
-        window.fetch = function(input, init) {
-          try {
-            if (typeof input === 'string') input = toHttps(input);
-            else if (input && input.url) input = new Request(toHttps(input.url), input);
-          } catch(e) {}
-          return _fetch.call(this, input, init);
-        };
-
-        // Patch XHR
-        const _open = XMLHttpRequest.prototype.open;
-        XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
-          return _open.call(this, method, toHttps(url), async, user, password);
-        };
-
-        window.addEventListener('load', rewriteAllInDOM);
+        window.addEventListener('load',()=>show(collect()));
       })();
     </script>
   </head>
