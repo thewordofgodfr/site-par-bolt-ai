@@ -1,9 +1,11 @@
 <!doctype html>
 <html lang="fr">
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Force l'upgrade http -> https pour éviter tout mixed content -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
     <!-- SEO (fallback si JS désactivé) -->
     <title>TheWord.fr — Bible en ligne (LSG 1910 & KJV)</title>
@@ -15,7 +17,6 @@
 
     <!-- Favicons / PWA -->
     <link rel="icon" href="/favicon.ico" sizes="any">
-    <!-- Optionnel mais utile pour iOS -->
     <link rel="apple-touch-icon" href="/logo192.png">
     <link rel="manifest" href="/site.webmanifest">
 
