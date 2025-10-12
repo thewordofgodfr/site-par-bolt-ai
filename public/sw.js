@@ -1,5 +1,5 @@
 // sw.js — HTTPS + cache propre + pré-cache Bible
-const CACHE_VERSION = 'v5';                 // ← incrémente à chaque déploiement
+const CACHE_VERSION = 'v6';                 // ← incrémente à chaque déploiement
 const CACHE_NAME = `twog-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
 
