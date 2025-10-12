@@ -1,5 +1,5 @@
 // sw-v7.js — prod: https+cache propre+MAJ immédiate
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAME = `twog-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
 
