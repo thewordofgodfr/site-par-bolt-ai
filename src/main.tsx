@@ -10,46 +10,32 @@ createRoot(rootEl).render(
   </StrictMode>
 );
 
-// --- PWA: Service Worker pour offline robuste ---
+// --- PWA: Service Worker (MAJ immédiate, un seul SW: /sw-v7.js) ---
 if ('serviceWorker' in navigator) {
-  // Enregistre le SW quand tout est chargé
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('[SW] Enregistré avec succès:', registration.scope);
+  window.addEventListener('load', async () => {
+    try {
+      // 1) Désenregistrer tout ancien SW qui n'est pas /sw-v7.js
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        regs.map(async (reg) => {
+          const scriptURL =
+            reg.active?.scriptURL || reg.waiting?.scriptURL || reg.installing?.scriptURL || '';
+          if (!scriptURL.endsWith('/sw-v7.js')) {
+            await reg.unregister();
+          }
+        })
+      );
 
-        // (Optionnel) Suivi des mises à jour du SW
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed') {
-              // Si une ancienne version existe, une mise à jour est prête
-              if (navigator.serviceWorker.controller) {
-                console.log('[SW] Nouvelle version prête (actualiser pour charger la mise à jour).');
-              } else {
-                console.log('[SW] Contenu disponible hors ligne.');
-              }
-            }
-          });
-        });
-      })
-      .catch((err) => {
-        console.error('[SW] Échec de l’enregistrement:', err);
-      });
-  });
-}
-// Enregistrer le SW avec MAJ immédiate
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw-v7.js', { scope: '/' }).then(reg => {
-      reg.update(); // vérifie tout de suite s'il y a une nouvelle version
+      // 2) Enregistrer le nouveau SW
+      const reg = await navigator.serviceWorker.register('/sw-v7.js', { scope: '/' });
 
-      // Si un SW est en attente, on le fait passer actif
+      // Vérifier tout de suite s'il y a une nouvelle version
+      reg.update();
+
+      // Si un SW est déjà prêt en attente, on le promeut
       if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
 
-      // Quand une nouvelle version est installée, on la prend et on recharge
+      // Quand une nouvelle version est détectée, on la prend
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         nw?.addEventListener('statechange', () => {
@@ -58,12 +44,14 @@ if ('serviceWorker' in navigator) {
           }
         });
       });
-    });
 
-    // Quand le contrôleur change → rechargement automatique
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
-    });
+      // Quand le contrôleur change → rechargement automatique
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    } catch (err) {
+      console.error('[SW] registration error:', err);
+    }
   });
 }
 
