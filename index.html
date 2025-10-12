@@ -4,15 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Force l'upgrade http -> https pour éviter tout mixed content -->
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <!-- Force http->https et bloque tout mixed content résiduel -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content">
 
-    <!-- SEO (fallback si JS désactivé) -->
+    <!-- SEO -->
     <title>TheWord.fr — Bible en ligne (LSG 1910 & KJV)</title>
     <meta name="description" content="The Word : lecture de la Bible en français (LSG 1910) et en anglais (KJV). Recherche rapide, verset aléatoire, lecture chapitre par chapitre. Gratuit et sans inscription.">
     <link rel="canonical" href="https://www.theword.fr/" />
-
-    <!-- Couleur du thème (doit matcher le manifest) -->
     <meta name="theme-color" content="#2196f3" />
 
     <!-- Favicons / PWA -->
@@ -20,16 +18,62 @@
     <link rel="apple-touch-icon" href="/logo192.png">
     <link rel="manifest" href="/site.webmanifest">
 
-    <!-- Open Graph (prévisualisation partage) -->
+    <!-- Open Graph -->
     <meta property="og:title" content="TheWord.fr — Bible en ligne (LSG 1910 & KJV)">
     <meta property="og:description" content="Lire la Bible en français (LSG 1910) et en anglais (KJV). Verset aléatoire, recherche, lecture par chapitre.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.theword.fr/">
     <meta property="og:image" content="https://www.theword.fr/logo512.png">
 
-    <!-- (Optionnel) Améliorations PWA -->
+    <!-- PWA -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- RÉÉCRITURE AUTOMATIQUE des URLs http:// en https:// (balises + fetch + XHR) -->
+    <script>
+      (function () {
+        const toHttps = (u) => (typeof u === 'string' && u.startsWith('http://')) ? ('https://' + u.slice(7)) : u;
+
+        // Réécrire attributs src/href/srcset sur éléments existants
+        function rewriteAttrs(el) {
+          ['src','href','srcset'].forEach(a => {
+            const v = el.getAttribute && el.getAttribute(a);
+            if (v && v.startsWith('http://')) el.setAttribute(a, toHttps(v));
+          });
+        }
+        function rewriteAllInDOM() {
+          document.querySelectorAll('img,script,link,iframe,source,video,audio').forEach(rewriteAttrs);
+        }
+        rewriteAllInDOM();
+
+        // Observer les nouveaux nœuds / changements d'attributs
+        const mo = new MutationObserver(muts => {
+          muts.forEach(m => {
+            if (m.type === 'attributes' && ['src','href','srcset'].includes(m.attributeName)) rewriteAttrs(m.target);
+            if (m.type === 'childList') m.addedNodes.forEach(n => { if (n.nodeType === 1) rewriteAttrs(n); });
+          });
+        });
+        mo.observe(document.documentElement, {subtree:true, attributes:true, attributeFilter:['src','href','srcset'], childList:true});
+
+        // Patch fetch
+        const _fetch = window.fetch;
+        window.fetch = function(input, init) {
+          try {
+            if (typeof input === 'string') input = toHttps(input);
+            else if (input && input.url) input = new Request(toHttps(input.url), input);
+          } catch(e) {}
+          return _fetch.call(this, input, init);
+        };
+
+        // Patch XHR
+        const _open = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+          return _open.call(this, method, toHttps(url), async, user, password);
+        };
+
+        window.addEventListener('load', rewriteAllInDOM);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
