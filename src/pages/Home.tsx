@@ -158,7 +158,7 @@ export default function Home() {
           </div>
 
           {/* Citation fixe (cliquable) */}
-          <div className="text-center mt-14">
+          <div className="text-center mt-18">
             <button
               onClick={openJeremiah23}
               className="mx-auto block focus:outline-none"
