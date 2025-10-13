@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "fr.theword.app",
+      "package_name": "fr.theword.www.twa",
       "sha256_cert_fingerprints": [
-        "CC:CB:DD:CD:0C:4D:42:88:0C:23:50:37:27:BC:FB:9D:26:9F:7D:E6:8A:7D:67:24:D5:D8:49:38:F6:6D:A0:91"
+        "39:59:9B:72:B1:F8:BA:CD:2C:C9:B8:14:08:F2:BA:5B:F6:E9:E5:09:8C:76:E6:50:5D:4C:AD:DE:6C:82:EA:6C"
       ]
     }
   }
