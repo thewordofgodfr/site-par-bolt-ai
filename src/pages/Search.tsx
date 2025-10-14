@@ -9,7 +9,6 @@ import {
   Search as SearchIcon,
   X,
 } from 'lucide-react';
-import { highlightText } from '../utils/searchUtils';
 import { saveSlot as saveQuickSlot } from '../services/readingSlots';
 
 type Grouped = {
@@ -17,6 +16,151 @@ type Grouped = {
   displayName: string;
   verses: BibleVerse[];
 };
+
+/** --- Utils "phrase search" (accent-insensitive) --- **/
+
+// Remplace ligatures fréquentes (œ → oe, æ → ae) pour éviter de rater des matches.
+function normalizeLigatures(s: string) {
+  return s.replace(/œ/g, 'oe').replace(/Œ/g, 'oe').replace(/æ/g, 'ae').replace(/Æ/g, 'ae');
+}
+
+// Normalisation pour comparaison : supprime accents, minuscule, remplace ponctuation par espaces.
+function normalizeForSearch(s: string) {
+  const noLig = normalizeLigatures(s);
+  // NFD + suppression des diacritiques
+  const deAccented = noLig.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Garde lettres/chiffres, le reste devient espace ; compacte espaces
+  return deAccented
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+// Construit une version normalisée + une table de correspondance index normalisé -> index original.
+// Permet de surligner précisément dans le texte d'origine (avec accents).
+function buildNormalizedWithMap(input: string) {
+  const src = normalizeLigatures(input);
+  const normChars: string[] = [];
+  const idxMap: number[] = [];
+  let lastWasSpace = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    // Décompose et retire diacritiques
+    const base = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    // Certains chars décomposés peuvent donner >1 (rare ici), on itère
+    let emitted = false;
+    for (let k = 0; k < base.length; k++) {
+      const c = base[k];
+      if (/[A-Za-z0-9]/.test(c)) {
+        normChars.push(c.toLowerCase());
+        idxMap.push(i);
+        emitted = true;
+        lastWasSpace = false;
+      } else {
+        // non alphanum dans base → ne rien émettre ici
+      }
+    }
+    // Si rien d'alphanum n'a été émis pour ce char original, on émet un seul espace (si besoin)
+    if (!emitted) {
+      if (!lastWasSpace) {
+        normChars.push(' ');
+        idxMap.push(i);
+        lastWasSpace = true;
+      }
+    }
+  }
+
+  // Trim début/fin si ce sont des espaces (et ajuste idxMap en conséquence)
+  let start = 0;
+  while (start < normChars.length && normChars[start] === ' ') start++;
+  let end = normChars.length;
+  while (end > start && normChars[end - 1] === ' ') end--;
+
+  const norm = normChars.slice(start, end).join('');
+  const map = idxMap.slice(start, end);
+  return { norm, map };
+}
+
+function containsPhrase(text: string, query: string) {
+  const normText = normalizeForSearch(text);
+  const normQuery = normalizeForSearch(query);
+  if (!normQuery) return false;
+  // Encadre d'espaces pour simuler "limites" post-normalisation
+  return (` ${normText} `).includes(` ${normQuery} `);
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Surligne l'expression complète (toutes occurrences), accent-insensitive, en conservant le texte original.
+function highlightPhrase(text: string, query: string) {
+  const normQuery = normalizeForSearch(query);
+  if (!normQuery) return escapeHtml(text);
+
+  const { norm, map } = buildNormalizedWithMap(text);
+  if (!norm) return escapeHtml(text);
+
+  const padded = ` ${norm} `;
+  const needle = ` ${normQuery} `;
+
+  const matches: Array<{ start: number; end: number }> = [];
+  let from = 0;
+  while (true) {
+    const pos = padded.indexOf(needle, from);
+    if (pos === -1) break;
+    // retirer le padding initial (1 espace)
+    const startInNorm = pos - 1;
+    const endInNorm = startInNorm + normQuery.length; // exclusif
+    matches.push({ start: startInNorm, end: endInNorm });
+    from = pos + needle.length;
+  }
+
+  if (!matches.length) return escapeHtml(text);
+
+  // Convertit positions normalisées → tranches d'index du texte original
+  const ranges: Array<{ start: number; end: number }> = matches.map(({ start, end }) => {
+    const origStart = map[Math.max(0, start)];
+    const origEnd = (map[Math.min(map.length - 1, end - 1)] ?? map[map.length - 1]) + 1; // exclusif
+    return { start: origStart, end: origEnd };
+  });
+
+  // Fusionne les éventuels chevauchements
+  ranges.sort((a, b) => a.start - b.start);
+  const merged: typeof ranges = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (!last || r.start > last.end) {
+      merged.push({ ...r });
+    } else {
+      last.end = Math.max(last.end, r.end);
+    }
+  }
+
+  // Construit HTML échappé avec <mark>
+  let html = '';
+  let cursor = 0;
+  for (const r of merged) {
+    if (cursor < r.start) {
+      html += escapeHtml(text.slice(cursor, r.start));
+    }
+    const segment = text.slice(r.start, r.end);
+    html += `<mark>${escapeHtml(segment)}</mark>`;
+    cursor = r.end;
+  }
+  if (cursor < text.length) {
+    html += escapeHtml(text.slice(cursor));
+  }
+  return html;
+}
+
+/** --- Composant principal --- **/
 
 export default function Search() {
   const { state, navigateToVerse } = useApp();
@@ -70,7 +214,9 @@ export default function Search() {
       setLoading(true);
       try {
         const res = await searchInBible(query, state.settings.language);
-        setResults(res);
+        // Filtrage "expression exacte" accent-insensible
+        const filtered = res.filter(v => containsPhrase(v.text, query));
+        setResults(filtered);
       } finally {
         setLoading(false);
       }
@@ -311,7 +457,7 @@ export default function Search() {
                           <div
                             className={isDark ? 'text-gray-200' : 'text-gray-700'}
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                            dangerouslySetInnerHTML={{ __html: highlightText(v.text, query) }}
+                            dangerouslySetInnerHTML={{ __html: highlightPhrase(v.text, query) }}
                           />
                         </div>
                       );
