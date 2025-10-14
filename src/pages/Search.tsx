@@ -17,19 +17,15 @@ type Grouped = {
   verses: BibleVerse[];
 };
 
-/** --- Utils "phrase search" (accent-insensitive) --- **/
+/* ========= Utils (expression exacte, insensible aux accents) ========= */
 
-// Remplace ligatures fréquentes (œ → oe, æ → ae) pour éviter de rater des matches.
 function normalizeLigatures(s: string) {
   return s.replace(/œ/g, 'oe').replace(/Œ/g, 'oe').replace(/æ/g, 'ae').replace(/Æ/g, 'ae');
 }
 
-// Normalisation pour comparaison : supprime accents, minuscule, remplace ponctuation par espaces.
 function normalizeForSearch(s: string) {
   const noLig = normalizeLigatures(s);
-  // NFD + suppression des diacritiques
   const deAccented = noLig.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  // Garde lettres/chiffres, le reste devient espace ; compacte espaces
   return deAccented
     .toLowerCase()
     .replace(/[^a-z0-9]+/gi, ' ')
@@ -37,8 +33,6 @@ function normalizeForSearch(s: string) {
     .replace(/\s+/g, ' ');
 }
 
-// Construit une version normalisée + une table de correspondance index normalisé -> index original.
-// Permet de surligner précisément dans le texte d'origine (avec accents).
 function buildNormalizedWithMap(input: string) {
   const src = normalizeLigatures(input);
   const normChars: string[] = [];
@@ -47,9 +41,7 @@ function buildNormalizedWithMap(input: string) {
 
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
-    // Décompose et retire diacritiques
     const base = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    // Certains chars décomposés peuvent donner >1 (rare ici), on itère
     let emitted = false;
     for (let k = 0; k < base.length; k++) {
       const c = base[k];
@@ -58,11 +50,8 @@ function buildNormalizedWithMap(input: string) {
         idxMap.push(i);
         emitted = true;
         lastWasSpace = false;
-      } else {
-        // non alphanum dans base → ne rien émettre ici
       }
     }
-    // Si rien d'alphanum n'a été émis pour ce char original, on émet un seul espace (si besoin)
     if (!emitted) {
       if (!lastWasSpace) {
         normChars.push(' ');
@@ -72,7 +61,6 @@ function buildNormalizedWithMap(input: string) {
     }
   }
 
-  // Trim début/fin si ce sont des espaces (et ajuste idxMap en conséquence)
   let start = 0;
   while (start < normChars.length && normChars[start] === ' ') start++;
   let end = normChars.length;
@@ -87,7 +75,6 @@ function containsPhrase(text: string, query: string) {
   const normText = normalizeForSearch(text);
   const normQuery = normalizeForSearch(query);
   if (!normQuery) return false;
-  // Encadre d'espaces pour simuler "limites" post-normalisation
   return (` ${normText} `).includes(` ${normQuery} `);
 }
 
@@ -99,7 +86,7 @@ function escapeHtml(s: string) {
     .replace(/"/g, '&quot;');
 }
 
-// Surligne l'expression complète (toutes occurrences), accent-insensitive, en conservant le texte original.
+/** Surligne l’expression complète (toutes occurrences) */
 function highlightPhrase(text: string, query: string) {
   const normQuery = normalizeForSearch(query);
   if (!normQuery) return escapeHtml(text);
@@ -115,8 +102,8 @@ function highlightPhrase(text: string, query: string) {
   while (true) {
     const pos = padded.indexOf(needle, from);
     if (pos === -1) break;
-    // retirer le padding initial (1 espace)
-    const startInNorm = pos - 1;
+    // ✅ FIX: ne pas retirer 1 – le début réel dans "norm" est à l’index 'pos'
+    const startInNorm = pos;
     const endInNorm = startInNorm + normQuery.length; // exclusif
     matches.push({ start: startInNorm, end: endInNorm });
     from = pos + needle.length;
@@ -124,56 +111,44 @@ function highlightPhrase(text: string, query: string) {
 
   if (!matches.length) return escapeHtml(text);
 
-  // Convertit positions normalisées → tranches d'index du texte original
   const ranges: Array<{ start: number; end: number }> = matches.map(({ start, end }) => {
     const origStart = map[Math.max(0, start)];
     const origEnd = (map[Math.min(map.length - 1, end - 1)] ?? map[map.length - 1]) + 1; // exclusif
     return { start: origStart, end: origEnd };
   });
 
-  // Fusionne les éventuels chevauchements
   ranges.sort((a, b) => a.start - b.start);
   const merged: typeof ranges = [];
   for (const r of ranges) {
     const last = merged[merged.length - 1];
-    if (!last || r.start > last.end) {
-      merged.push({ ...r });
-    } else {
-      last.end = Math.max(last.end, r.end);
-    }
+    if (!last || r.start > last.end) merged.push({ ...r });
+    else last.end = Math.max(last.end, r.end);
   }
 
-  // Construit HTML échappé avec <mark>
   let html = '';
   let cursor = 0;
   for (const r of merged) {
-    if (cursor < r.start) {
-      html += escapeHtml(text.slice(cursor, r.start));
-    }
+    if (cursor < r.start) html += escapeHtml(text.slice(cursor, r.start));
     const segment = text.slice(r.start, r.end);
     html += `<mark>${escapeHtml(segment)}</mark>`;
     cursor = r.end;
   }
-  if (cursor < text.length) {
-    html += escapeHtml(text.slice(cursor));
-  }
+  if (cursor < text.length) html += escapeHtml(text.slice(cursor));
   return html;
 }
 
-/** --- Composant principal --- **/
+/* ====================== Composant ====================== */
 
 export default function Search() {
   const { state, navigateToVerse } = useApp();
   const isDark = state.settings.theme === 'dark';
 
-  // --- Clés de persistance ---
   const queryKey = `twog:search:lastQuery:${state.settings.language}`;
   const expandedKey = (q: string) =>
     `twog:search:expanded:${state.settings.language}:${q.trim().toLowerCase()}`;
   const scrollKey = (q: string) =>
     `twog:search:scroll:${state.settings.language}:${q.trim().toLowerCase()}`;
 
-  // --- Requête ---
   const [query, setQuery] = useState<string>('');
   useEffect(() => {
     const saved = sessionStorage.getItem(queryKey);
@@ -184,7 +159,6 @@ export default function Search() {
     sessionStorage.setItem(queryKey, query);
   }, [query, queryKey]);
 
-  // --- Résultats / UI ---
   const [results, setResults] = useState<BibleVerse[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -204,7 +178,7 @@ export default function Search() {
     document.title = state.settings.language === 'fr' ? 'Recherche biblique' : 'Bible Search';
   }, [state.settings.language]);
 
-  // Lancement recherche (debounce)
+  // Déclenchement recherche
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
@@ -214,7 +188,6 @@ export default function Search() {
       setLoading(true);
       try {
         const res = await searchInBible(query, state.settings.language);
-        // Filtrage "expression exacte" accent-insensible
         const filtered = res.filter(v => containsPhrase(v.text, query));
         setResults(filtered);
       } finally {
@@ -240,7 +213,7 @@ export default function Search() {
     return arr;
   }, [results, state.settings.language, books]);
 
-  // Restaure l’état des groupes
+  // Restauration états d’ouverture
   useEffect(() => {
     if (!grouped.length) {
       setExpanded({});
@@ -250,9 +223,7 @@ export default function Search() {
     try {
       const raw = sessionStorage.getItem(expandedKey(query));
       if (raw) restored = JSON.parse(raw);
-    } catch {
-      restored = null;
-    }
+    } catch { restored = null; }
     if (restored && Object.keys(restored).length) {
       const next: Record<string, boolean> = {};
       for (const g of grouped) next[g.bookId] = !!restored[g.bookId];
@@ -266,7 +237,6 @@ export default function Search() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grouped, query, state.settings.language]);
 
-  // Sauvegarde des groupes
   useEffect(() => {
     if (!grouped.length) return;
     try {
@@ -274,7 +244,7 @@ export default function Search() {
     } catch {}
   }, [expanded, grouped, query, state.settings.language]);
 
-  // --- Scroll : RESTAURATION
+  // Restauration du scroll
   useEffect(() => {
     if (!grouped.length || loading) return;
     const raw = sessionStorage.getItem(scrollKey(query));
@@ -285,7 +255,6 @@ export default function Search() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grouped, loading, query, state.settings.language]);
 
-  // Sauvegarde du scroll à l’unmount
   useEffect(() => {
     const save = () => sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
     window.addEventListener('beforeunload', save);
@@ -314,7 +283,6 @@ export default function Search() {
     sessionStorage.removeItem(scrollKey(query));
   };
 
-  // Ouvrir en Lecture + enregistrer la "mémoire recherche" (slot #0)
   const openInReading = (v: BibleVerse) => {
     try { saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse }); } catch {}
     sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
@@ -326,7 +294,14 @@ export default function Search() {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
       <div className="max-w-4xl mx-auto px-4 py-5">
-        {/* Barre de recherche */}
+        {/* --- Petit MASQUE collant en haut pour éviter le "morceau" qui dépasse --- */}
+        <div
+          className={`sticky top-0 z-20 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
+          style={{ height: 8 }}
+          aria-hidden
+        />
+
+        {/* Barre de recherche (sticky) */}
         <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-3 sticky top-20 sm:top-16 z-30`}>
           <form onSubmit={e => e.preventDefault()} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -400,7 +375,7 @@ export default function Search() {
           </div>
         </div>
 
-        {/* Groupes par livre */}
+        {/* Résultats */}
         <div className="mt-4">
           {total === 0 && !loading && query.trim().length >= 2 && (
             <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-center py-10`}>
@@ -419,7 +394,6 @@ export default function Search() {
                 key={group.bookId}
                 className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg mb-3 overflow-hidden`}
               >
-                {/* En-tête cliquable */}
                 <button
                   onClick={() => toggleGroup(group.bookId)}
                   className={`w-full flex items-center justify-between px-4 py-3 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
@@ -436,7 +410,6 @@ export default function Search() {
                   <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>({count})</span>
                 </button>
 
-                {/* Liste des versets */}
                 {open && (
                   <div className="px-4 pb-3 space-y-3">
                     {group.verses.map(v => {
