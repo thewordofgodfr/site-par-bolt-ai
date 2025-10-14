@@ -115,7 +115,7 @@
         },
         {
           "ID": 7,
-          "Text": "Que celui qui a des oreilles entende ce que l’Esprit dit aux Églises: A celui qui vaincra je donnerai à manger del’arbre de vie, qui est dans le paradis de Dieu."
+          "Text": "Que celui qui a des oreilles entende ce que l’Esprit dit aux Églises: A celui qui vaincra je donnerai à manger de l’arbre de vie, qui est dans le paradis de Dieu."
         },
         {
           "ID": 8,
@@ -151,7 +151,7 @@
         },
         {
           "ID": 16,
-          "Text": "Repens-toi donc; sinon, je viendrai à toi bientôt, et je les combattraiavec l’épée de ma bouche."
+          "Text": "Repens-toi donc; sinon, je viendrai à toi bientôt, et je les combattrai avec l’épée de ma bouche."
         },
         {
           "ID": 17,
@@ -179,7 +179,7 @@
         },
         {
           "ID": 23,
-          "Text": "Je ferai mourir de mort ses enfants; et toutes les Églises connaîtrontque je suis celui qui sonde les reins et les cœurs, etje vous rendrai à chacun selon vos œuvres."
+          "Text": "Je ferai mourir de mort ses enfants; et toutes les Églises connaîtront que je suis celui qui sonde les reins et les cœurs, etje vous rendrai à chacun selon vos œuvres."
         },
         {
           "ID": 24,
@@ -220,7 +220,7 @@
         },
         {
           "ID": 3,
-          "Text": "Rappelle-toi donc comment tu as reçu et entendu, et garde, etrepens-toi. Si tu ne veilles pas, je viendraicomme un voleur, et tu ne sauras pas à quelle heure je viendrai sur toi."
+          "Text": "Rappelle-toi donc comment tu as reçu et entendu, et garde, et repens-toi. Si tu ne veilles pas, je viendrai comme un voleur, et tu ne sauras pas à quelle heure je viendrai sur toi."
         },
         {
           "ID": 4,
@@ -228,7 +228,7 @@
         },
         {
           "ID": 5,
-          "Text": "Celui qui vaincra sera revêtu ainsi de vêtements blancs; je n’effacerai point son nomdu livre de vie, etje confesserai son nom devant mon Père et devant ses anges."
+          "Text": "Celui qui vaincra sera revêtu ainsi de vêtements blancs; je n’effacerai point son nom du livre de vie, etje confesserai son nom devant mon Père et devant ses anges."
         },
         {
           "ID": 6,
@@ -252,11 +252,11 @@
         },
         {
           "ID": 11,
-          "Text": "Je viens bientôt.Retiens ce que tu as, afin que personne ne prenne ta couronne."
+          "Text": "Je viens bientôt. Retiens ce que tu as, afin que personne ne prenne ta couronne."
         },
         {
           "ID": 12,
-          "Text": "Celui qui vaincra, je ferai de luiune colonne dans le temple de mon Dieu, et il n’en sortira plus; j’écrirai sur luile nom de mon Dieu, et le nom de la ville de mon Dieu, de la nouvelle Jérusalem qui descend du ciel d’auprès de mon Dieu, et mon nom nouveau."
+          "Text": "Celui qui vaincra, je ferai de lui une colonne dans le temple de mon Dieu, et il n’en sortira plus; j’écrirai sur luile nom de mon Dieu, et le nom de la ville de mon Dieu, de la nouvelle Jérusalem qui descend du ciel d’auprès de mon Dieu, et mon nom nouveau."
         },
         {
           "ID": 13,
@@ -264,7 +264,7 @@
         },
         {
           "ID": 14,
-          "Text": "Écris à l’ange de l’Église de Laodicée: Voici ce que ditl’Amen, le témoin fidèle et véritable, le commencement de la création de Dieu:"
+          "Text": "Écris à l’ange de l’Église de Laodicée: Voici ce que dit l’Amen, le témoin fidèle et véritable, le commencement de la création de Dieu:"
         },
         {
           "ID": 15,
@@ -280,7 +280,7 @@
         },
         {
           "ID": 18,
-          "Text": "je te conseille d’acheter de moi de l’or éprouvé par le feu, afin que tu deviennes riche, etdes vêtements blancs, afin que tu sois vêtu et que la honte de ta nudité ne paraisse pas, et un collyre pour oindre tes yeux, afin que tu voies."
+          "Text": "je te conseille d’acheter de moi de l’or éprouvé par le feu, afin que tu deviennes riche, et des vêtements blancs, afin que tu sois vêtu et que la honte de ta nudité ne paraisse pas, et un collyre pour oindre tes yeux, afin que tu voies."
         },
         {
           "ID": 19,
@@ -1732,4 +1732,5 @@
       ]
     }
   ]
+
 }
