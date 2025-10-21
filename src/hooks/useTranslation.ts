@@ -5,6 +5,7 @@ const translations = {
     // Navigation
     home: 'Accueil',
     reading: 'Lecture',
+    search: 'Recherche',
     settings: 'Paramètres',
     about: 'À propos',
     
