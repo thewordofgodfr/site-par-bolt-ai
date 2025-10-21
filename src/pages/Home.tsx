@@ -148,8 +148,8 @@ export default function Home() {
             >
               <p className={`italic hover:underline ${isDark ? 'text-gray-200' : 'text-gray-700'} text-base md:text-lg`}>
                 {lang === 'fr'
-                  ? '« Ma parole n’est-elle pas comme un feu, dit l’Éternel, et comme un marteau qui brise le roc ? » — Jérémie 23:29'
-                  : '“Is not my word like as a fire? saith the LORD; and like a hammer that breaketh the rock in pieces?” — Jeremiah 23:29'}
+                  ? '« Ma parole n’est-elle pas comme un feu, dit l’Éternel, et comme un marteau qui brise le roc ? » Jérémie 23:29'
+                  : '“Is not my word like as a fire? saith the LORD; and like a hammer that breaketh the rock in pieces?” Jeremiah 23:29'}
               </p>
             </button>
           </div>
