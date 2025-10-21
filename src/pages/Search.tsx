@@ -17,7 +17,7 @@ type Grouped = {
   verses: BibleVerse[];
 };
 
-/* ========= Utils (expression exacte, insensible aux accents) ========= */
+/* ========= Utils (accents/ligatures, préfixe, etc.) ========= */
 
 function normalizeLigatures(s: string) {
   return s.replace(/œ/g, 'oe').replace(/Œ/g, 'oe').replace(/æ/g, 'ae').replace(/Æ/g, 'ae');
@@ -71,11 +71,25 @@ function buildNormalizedWithMap(input: string) {
   return { norm, map };
 }
 
-function containsPhrase(text: string, query: string) {
+/** Match “flexible” :
+ *  - si la requête se termine par un espace → expression exacte (mots entiers)
+ *  - sinon → dernier mot en *préfixe* (ex: "conspi" → "conspiration")
+ *  - insensible aux accents/ligatures/casse
+ */
+function matchesFlexible(text: string, query: string) {
   const normText = normalizeForSearch(text);
   const normQuery = normalizeForSearch(query);
   if (!normQuery) return false;
-  return (` ${normText} `).includes(` ${normQuery} `);
+
+  const endsWithSpace = /\s$/.test(query);
+  const paddedText = ` ${normText} `;
+
+  if (endsWithSpace) {
+    // mots entiers
+    return paddedText.includes(` ${normQuery} `);
+  }
+  // préfixe du dernier mot (et plus généralement: début de mot)
+  return paddedText.includes(` ${normQuery}`);
 }
 
 function escapeHtml(s: string) {
@@ -86,38 +100,39 @@ function escapeHtml(s: string) {
     .replace(/"/g, '&quot;');
 }
 
-/** Surligne l’expression complète (toutes occurrences) */
-function highlightPhrase(text: string, query: string) {
+/** Surlignage aligné sur matchesFlexible */
+function highlightFlexible(text: string, query: string) {
   const normQuery = normalizeForSearch(query);
   if (!normQuery) return escapeHtml(text);
 
   const { norm, map } = buildNormalizedWithMap(text);
   if (!norm) return escapeHtml(text);
 
-  const padded = ` ${norm} `;
-  const needle = ` ${normQuery} `;
+  const endsWithSpace = /\s$/.test(query);
+  const padded = ` ${norm}`; // pas d’espace final ici
+  const needle = endsWithSpace ? ` ${normQuery} ` : ` ${normQuery}`;
 
   const matches: Array<{ start: number; end: number }> = [];
   let from = 0;
   while (true) {
     const pos = padded.indexOf(needle, from);
     if (pos === -1) break;
-    // ✅ FIX: ne pas retirer 1 – le début réel dans "norm" est à l’index 'pos'
+    // On réutilise l’index tel quel, comme précédemment
     const startInNorm = pos;
-    const endInNorm = startInNorm + normQuery.length; // exclusif
+    const endInNorm = pos + (endsWithSpace ? normQuery.length : normQuery.length);
     matches.push({ start: startInNorm, end: endInNorm });
     from = pos + needle.length;
   }
-
   if (!matches.length) return escapeHtml(text);
 
-  const ranges: Array<{ start: number; end: number }> = matches.map(({ start, end }) => {
+  // Conversion → indices d’origine
+  const ranges = matches.map(({ start, end }) => {
     const origStart = map[Math.max(0, start)];
-    const origEnd = (map[Math.min(map.length - 1, end - 1)] ?? map[map.length - 1]) + 1; // exclusif
+    const origEnd = (map[Math.min(map.length - 1, end - 1)] ?? map[map.length - 1]) + 1; // exclu
     return { start: origStart, end: origEnd };
-  });
+  }).sort((a, b) => a.start - b.start);
 
-  ranges.sort((a, b) => a.start - b.start);
+  // Fusion des recouvrements
   const merged: typeof ranges = [];
   for (const r of ranges) {
     const last = merged[merged.length - 1];
@@ -125,12 +140,12 @@ function highlightPhrase(text: string, query: string) {
     else last.end = Math.max(last.end, r.end);
   }
 
+  // Construction HTML
   let html = '';
   let cursor = 0;
   for (const r of merged) {
     if (cursor < r.start) html += escapeHtml(text.slice(cursor, r.start));
-    const segment = text.slice(r.start, r.end);
-    html += `<mark>${escapeHtml(segment)}</mark>`;
+    html += `<mark>${escapeHtml(text.slice(r.start, r.end))}</mark>`;
     cursor = r.end;
   }
   if (cursor < text.length) html += escapeHtml(text.slice(cursor));
@@ -174,11 +189,12 @@ export default function Search() {
     return idx === -1 ? 9999 : idx;
   };
 
+  // Titre de page
   useEffect(() => {
     document.title = state.settings.language === 'fr' ? 'Recherche biblique' : 'Bible Search';
   }, [state.settings.language]);
 
-  // Déclenchement recherche
+  // Lancer la recherche (debounce)
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
@@ -187,8 +203,10 @@ export default function Search() {
     const handle = setTimeout(async () => {
       setLoading(true);
       try {
+        // Large moissonnage côté service
         const res = await searchInBible(query, state.settings.language);
-        const filtered = res.filter(v => containsPhrase(v.text, query));
+        // Filtrage malin côté UI (préfixe/accents/ligatures)
+        const filtered = res.filter(v => matchesFlexible(v.text, query));
         setResults(filtered);
       } finally {
         setLoading(false);
@@ -294,6 +312,11 @@ export default function Search() {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
       <div className="max-w-4xl mx-auto px-4 py-5">
+        {/* En-tête / titre */}
+        <h1 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {state.settings.language === 'fr' ? 'Recherche' : 'Search'}
+        </h1>
+
         {/* --- Petit MASQUE collant en haut pour éviter le "morceau" qui dépasse --- */}
         <div
           className={`sticky top-0 z-20 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
@@ -338,8 +361,9 @@ export default function Search() {
             </div>
           </form>
 
-          <div className="mt-2 text-sm flex items-center justify-between">
-            <div className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+          {/* Ligne d’infos + actions — reste sur une ligne */}
+          <div className="mt-2 text-sm flex items-center justify-between gap-2">
+            <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} flex-1 min-w-0 truncate`}>
               {loading ? (
                 <>
                   <Loader2 className="inline mr-2 animate-spin" size={16} />
@@ -357,7 +381,7 @@ export default function Search() {
             </div>
 
             {grouped.length > 1 && total > 0 && !loading && (
-              <div className="space-x-2">
+              <div className="flex flex-shrink-0 space-x-2">
                 <button
                   onClick={expandAll}
                   className="text-xs px-2 py-1 rounded border border-transparent bg-blue-600 text-white hover:bg-blue-500"
@@ -430,7 +454,7 @@ export default function Search() {
                           <div
                             className={isDark ? 'text-gray-200' : 'text-gray-700'}
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
-                            dangerouslySetInnerHTML={{ __html: highlightPhrase(v.text, query) }}
+                            dangerouslySetInnerHTML={{ __html: highlightFlexible(v.text, query) }}
                           />
                         </div>
                       );
@@ -445,3 +469,4 @@ export default function Search() {
     </div>
   );
 }
+
