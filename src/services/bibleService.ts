@@ -1,4 +1,4 @@
-// src/services/bibleService.ts — version fichier unique JSONL (FR & EN)
+// src/services/bibleService.ts — version fichier unique JSONL (FR & EN) + compat warmup
 import { BibleVerse, BibleChapter, Language } from '../types/bible';
 import { bibleBooks } from '../data/bibleBooks';
 
@@ -193,7 +193,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-/* ---- Warm-up ultra-light : charge le JSONL en idle ---- */
+/* ---- Warm-up (compat avec ancien code) ---- */
 type IdleDeadline = { timeRemaining: () => number };
 type IdleCb = (deadline?: IdleDeadline) => void;
 const idle = (cb: IdleCb) => {
@@ -201,9 +201,20 @@ const idle = (cb: IdleCb) => {
     (window as any).requestIdleCallback(cb as any);
   } else { setTimeout(() => cb({ timeRemaining: () => 0 }), 250); }
 };
+
+/** anciens drapeaux, pour compat */
 let warmed: Record<Language, boolean> = { fr: false, en: false };
+let warmupEnabled = true;
+
+export function pauseWarmup() { warmupEnabled = false; }
+export function resumeWarmup() { warmupEnabled = true; }
+
+/** Précharge le JSONL en arrière-plan si autorisé */
 export function warmBibleCache(language: Language) {
   if (warmed[language]) return;
   warmed[language] = true;
-  idle(() => { ensureLoaded(language).catch(() => {}); });
+  idle(() => {
+    if (!warmupEnabled) return;
+    ensureLoaded(language).catch(() => {});
+  });
 }
