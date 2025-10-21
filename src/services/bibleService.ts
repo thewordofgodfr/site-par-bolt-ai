@@ -1,203 +1,92 @@
+// src/services/bibleService.ts — version fichier unique JSONL (FR & EN)
 import { BibleVerse, BibleChapter, Language } from '../types/bible';
 import { bibleBooks } from '../data/bibleBooks';
-import { searchInText } from '../utils/searchUtils';
 
-interface BibleVerse_JSON {
-  ID: number;
-  Text: string;
-}
+/** Structure d'une ligne JSONL */
+type VerseRow = { id: string; b: string; c: number; v: number; t: string };
 
-interface BibleChapter_JSON {
-  Number: number;
-  Verses: BibleVerse_JSON[];
-}
+/** Cache du corpus par langue */
+const versesCache = new Map<Language, VerseRow[]>();
 
-interface BibleBook_JSON {
-  Name: string;
-  Chapters: BibleChapter_JSON[];
-}
+/** Index chapitres: lang -> codeLivre -> chapitre -> [start,end[ dans versesCache */
+type ChapIndex = Map<string, Map<number, [number, number]>>;
+const indexCache = new Map<Language, ChapIndex>();
 
-interface VerseCounts {
-  [bookName: string]: number[];
-}
+/** Mapping codes VPL <-> noms internes (bibleBooks.name) */
+const codeToName: Record<string, string> = {
+  // AT
+  GEN:'Genesis', EXO:'Exodus', LEV:'Leviticus', NUM:'Numbers', DEU:'Deuteronomy',
+  JOS:'Joshua', JDG:'Judges', RUT:'Ruth',
+  '1SA':'1Samuel','2SA':'2Samuel','1KI':'1Kings','2KI':'2Kings',
+  '1CH':'1Chronicles','2CH':'2Chronicles', EZR:'Ezra', NEH:'Nehemiah',
+  EST:'Esther', JOB:'Job', PSA:'Psalms', PRO:'Proverbs', ECC:'Ecclesiastes',
+  'SNG':'Song of songs', ISA:'Isaiah', JER:'Jeremiah', LAM:'Lamentations',
+  EZK:'Ezekiel', DAN:'Daniel', HOS:'Hosea', JOL:'Joel', AMO:'Amos',
+  OBA:'Obadiah', JON:'Jonah', MIC:'Micah', NAM:'Nahum', HAB:'Habakkuk',
+  ZEP:'Zephaniah', HAG:'Haggai', ZEC:'Zechariah', MAL:'Malachi',
+  // NT
+  MAT:'Matthew', MRK:'Mark', LUK:'Luke', JHN:'John', ACT:'Acts', ROM:'Romans',
+  '1CO':'1Corinthians','2CO':'2Corinthians', GAL:'Galatians', EPH:'Ephesians',
+  PHP:'Philippians', COL:'Colossians', '1TH':'1Thessalonians','2TH':'2Thessalonians',
+  '1TI':'1Timothy','2TI':'2Timothy', TIT:'Titus', PHM:'Philemon', HEB:'Hebrews',
+  JAM:'James', '1PE':'1Peter','2PE':'2Peter', '1JO':'1John','2JO':'2John','3JO':'3John',
+  JUD:'Jude', REV:'Revelation',
+};
+const nameToCode: Record<string, string> =
+  Object.fromEntries(Object.entries(codeToName).map(([k, v]) => [v, k]));
 
-const bibleCache: Map<string, BibleBook_JSON> = new Map();
-const verseCountsCache: Map<string, VerseCounts> = new Map();
-
-function generateFileNameVariants(bookName: string, language: Language): string[] {
-  const book = bibleBooks.find(b => b.name === bookName);
-  if (!book) return [bookName];
-
-  const baseName = language === 'fr' ? book.nameFr : book.nameEn;
-  const variants: string[] = [];
-
-  variants.push(baseName);
-  variants.push(baseName.replace(/\s+/g, ''));
-
-  const withoutAccents = baseName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D');
-  variants.push(withoutAccents);
-  variants.push(withoutAccents.replace(/\s+/g, ''));
-  variants.push(baseName.replace(/\s+/g, '_'));
-  variants.push(baseName.replace(/\s+/g, '-'));
-  variants.push(withoutAccents.replace(/\s+/g, '_'));
-  variants.push(withoutAccents.replace(/\s+/g, '-'));
-
-  if (language === 'fr') {
-    const manualReplacements = baseName
-      .replace(/é|è|ê|ë/g, 'e')
-      .replace(/à|â|ä/g, 'a')
-      .replace(/ç/g, 'c')
-      .replace(/î|ï/g, 'i')
-      .replace(/ô|ö/g, 'o')
-      .replace(/ù|û|ü/g, 'u')
-      .replace(/ÿ/g, 'y');
-
-    variants.push(manualReplacements);
-    variants.push(manualReplacements.replace(/\s+/g, ''));
-    variants.push(manualReplacements.replace(/\s+/g, '_'));
-    variants.push(manualReplacements.replace(/\s+/g, '-'));
-  }
-
-  return [...new Set(variants)];
-}
-
-async function tryLoadBookFile(bookName: string, language: Language): Promise<BibleBook_JSON | null> {
-  const variants = generateFileNameVariants(bookName, language);
-
-  for (const variant of variants) {
-    try {
-      const response = await fetch(`/data/bible/${language}/${variant}.json`);
-      if (response.ok) {
-        const bookData: BibleBook_JSON = await response.json();
-        return bookData;
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-async function loadBook(bookName: string, language: Language): Promise<BibleBook_JSON | null> {
-  const cacheKey = `${bookName}_${language}`;
-  if (bibleCache.has(cacheKey)) {
-    return bibleCache.get(cacheKey)!;
-  }
-
-  try {
-    const bookData = await tryLoadBookFile(bookName, language);
-    if (!bookData) return null;
-    bibleCache.set(cacheKey, bookData);
-    return bookData;
-  } catch (error) {
-    console.error(`Error loading ${bookName} in ${language}:`, error);
-    return null;
-  }
-}
-
+/** Nom d'affichage (FR/EN) */
 function getBookReference(bookName: string, language: Language): string {
-  const book = bibleBooks.find(b => b.name === bookName);
-  if (!book) return bookName;
-  return language === 'fr' ? book.nameFr : book.nameEn;
+  const meta = bibleBooks.find(b => b.name === bookName);
+  if (!meta) return bookName;
+  return language === 'fr' ? meta.nameFr : meta.nameEn;
 }
 
-async function loadVerseCounts(language: Language): Promise<VerseCounts> {
-  const cacheKey = `verse_counts_${language}`;
-
-  if (verseCountsCache.has(cacheKey)) {
-    return verseCountsCache.get(cacheKey)!;
-  }
-
-  const localStorageKey = `verse_counts_${language}`;
-  const cached = localStorage.getItem(localStorageKey);
-
-  if (cached) {
-    try {
-      const parsedCounts = JSON.parse(cached);
-      verseCountsCache.set(cacheKey, parsedCounts);
-      return parsedCounts;
-    } catch {
-      localStorage.removeItem(localStorageKey);
-    }
-  }
-
-  try {
-    const response = await fetch(`/data/bible/${language}/verse-counts.json`);
-    if (!response.ok) {
-      throw new Error('Failed to load verse-counts.json');
-    }
-
-    const verseCounts: VerseCounts = await response.json();
-    verseCountsCache.set(cacheKey, verseCounts);
-    localStorage.setItem(localStorageKey, JSON.stringify(verseCounts));
-
-    return verseCounts;
-  } catch (error) {
-    console.error(`Error loading verse counts for ${language}:`, error);
-    return {};
-  }
+/** Normalisation pour recherche (sans accents, minuscule) */
+function fold(s: string) {
+  return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 }
 
+/** Charge / indexe le fichier unique d'une langue (si pas déjà fait) */
+async function ensureLoaded(language: Language): Promise<void> {
+  if (versesCache.has(language) && indexCache.has(language)) return;
+
+  const url = `/data/bible/${language}/verses.jsonl`;
+  const res = await fetch(url, { cache: 'force-cache' });
+  if (!res.ok) throw new Error(`Fichier manquant: ${url}`);
+  const txt = await res.text();
+
+  const rows: VerseRow[] = txt.split(/\r?\n/).filter(Boolean).map(l => JSON.parse(l));
+  versesCache.set(language, rows);
+
+  // Construit index: pour chaque (code, chapitre), repère la plage contiguë
+  const idx: ChapIndex = new Map();
+  rows.forEach((r, i) => {
+    let bookMap = idx.get(r.b);
+    if (!bookMap) { bookMap = new Map(); idx.set(r.b, bookMap); }
+    const cur = bookMap.get(r.c);
+    if (!cur) bookMap.set(r.c, [i, i + 1]);
+    else cur[1] = i + 1;
+  });
+  indexCache.set(language, idx);
+}
+
+/** Verset aléatoire (tout corpus) */
 export async function getRandomVerse(language: Language): Promise<BibleVerse> {
   try {
-    const verseCounts = await loadVerseCounts(language);
-
-    if (Object.keys(verseCounts).length === 0) {
-      throw new Error('No verse counts loaded');
-    }
-
-    let totalVerses = 0;
-    for (const chapters of Object.values(verseCounts)) {
-      totalVerses += chapters.reduce((sum, count) => sum + count, 0);
-    }
-
-    const randomIndex = Math.floor(Math.random() * totalVerses);
-
-    let currentIndex = 0;
-    for (const [bookName, chapters] of Object.entries(verseCounts)) {
-      for (let chapterIndex = 0; chapterIndex < chapters.length; chapterIndex++) {
-        const verseCount = chapters[chapterIndex];
-
-        if (currentIndex + verseCount > randomIndex) {
-          const verseInChapter = randomIndex - currentIndex + 1;
-          const chapterNumber = chapterIndex + 1;
-
-          const book = await loadBook(bookName, language);
-          if (!book) {
-            throw new Error(`Book ${bookName} not found`);
-          }
-
-          const chapter = book.Chapters.find(ch => ch.Number === chapterNumber);
-          if (!chapter) {
-            throw new Error(`Chapter ${chapterNumber} not found in ${bookName}`);
-          }
-
-          const verse = chapter.Verses.find(v => v.ID === verseInChapter);
-          if (!verse) {
-            throw new Error(`Verse ${verseInChapter} not found`);
-          }
-
-          const bookReference = getBookReference(bookName, language);
-          return {
-            book: bookName,
-            chapter: chapterNumber,
-            verse: verseInChapter,
-            text: verse.Text,
-            reference: `${bookReference} ${chapterNumber}:${verseInChapter}`
-          };
-        }
-
-        currentIndex += verseCount;
-      }
-    }
-
-    throw new Error('Random verse calculation failed');
-  } catch (error) {
-    console.error('Error fetching random verse:', error);
+    await ensureLoaded(language);
+    const rows = versesCache.get(language)!;
+    const r = rows[Math.floor(Math.random() * rows.length)];
+    const bookName = codeToName[r.b] ?? 'John';
+    return {
+      book: bookName,
+      chapter: r.c,
+      verse: r.v,
+      text: r.t,
+      reference: `${getBookReference(bookName, language)} ${r.c}:${r.v}`,
+    };
+  } catch (e) {
+    console.error('Error fetching random verse:', e);
     return {
       book: 'John',
       chapter: 3,
@@ -205,234 +94,116 @@ export async function getRandomVerse(language: Language): Promise<BibleVerse> {
       text: language === 'fr'
         ? 'Car Dieu a tant aimé le monde qu\'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu\'il ait la vie éternelle.'
         : 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',
-      reference: language === 'fr' ? 'Jean 3:16' : 'John 3:16'
+      reference: language === 'fr' ? 'Jean 3:16' : 'John 3:16',
     };
   }
 }
 
-export async function getChapter(book: string, chapter: number, language: Language): Promise<BibleChapter> {
+/** Lecture d'un chapitre */
+export async function getChapter(bookName: string, chapter: number, language: Language): Promise<BibleChapter> {
   try {
-    const bookData = await loadBook(book, language);
-  if (!bookData) {
-      throw new Error(`Book ${book} not found`);
+    await ensureLoaded(language);
+    const rows = versesCache.get(language)!;
+    const idx = indexCache.get(language)!;
+
+    const code = nameToCode[bookName];
+    if (!code) throw new Error(`Livre inconnu: ${bookName}`);
+
+    const bookMap = idx.get(code);
+    if (!bookMap) throw new Error(`Index absent pour ${code}`);
+    const span = bookMap.get(chapter);
+    if (!span) throw new Error(`Chapitre ${chapter} introuvable dans ${bookName}`);
+
+    const [start, end] = span;
+    const verses: BibleVerse[] = [];
+    for (let i = start; i < end; i++) {
+      const r = rows[i];
+      if (r.c !== chapter) continue;
+      verses.push({
+        book: bookName,
+        chapter,
+        verse: r.v,
+        text: r.t,
+        reference: `${getBookReference(bookName, language)} ${chapter}:${r.v}`,
+      });
     }
-
-    const requestedChapter = bookData.Chapters.find(ch => ch.Number === chapter);
-    if (!requestedChapter) {
-      throw new Error(`Chapter ${chapter} not found in book ${book}`);
-    }
-
-    const verses: BibleVerse[] = requestedChapter.Verses.map(verseData => ({
-      book,
-      chapter,
-      verse: verseData.ID,
-      text: verseData.Text,
-      reference: `${getBookReference(book, language)} ${chapter}:${verseData.ID}`
-    }));
-
-    return { book, chapter, verses };
+    return { book: bookName, chapter, verses };
   } catch (error) {
-    console.error(`Error loading chapter ${book} ${chapter} in ${language}:`, error);
+    console.error(`Error loading chapter ${bookName} ${chapter} in ${language}:`, error);
     const verses: BibleVerse[] = [];
     for (let i = 1; i <= 10; i++) {
       verses.push({
-        book,
+        book: bookName,
         chapter,
         verse: i,
         text: language === 'fr'
-          ? `❌ Erreur: Fichier manquant pour ${book}`
-          : `❌ Error: Missing file for ${book}`,
-        reference: `${getBookReference(book, language)} ${chapter}:${i}`
+          ? `❌ Erreur: Données manquantes pour ${bookName}`
+          : `❌ Error: Missing data for ${bookName}`,
+        reference: `${getBookReference(bookName, language)} ${chapter}:${i}`,
       });
     }
-    return { book, chapter, verses };
+    return { book: bookName, chapter, verses };
   }
 }
 
+/** Recherche accent-insensible, sur tout le corpus */
+export async function searchInBible(searchTerm: string, language: Language): Promise<BibleVerse[]> {
+  const q = searchTerm.trim();
+  if (!q) return [];
+  await ensureLoaded(language);
+
+  // Cache session simple
+  const key = `twog:search:cache:${language}:${q.toLowerCase()}`;
+  try {
+    const cached = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
+    if (cached) return JSON.parse(cached);
+  } catch {}
+
+  const fq = fold(q);
+  const rows = versesCache.get(language)!;
+  const out: BibleVerse[] = [];
+  for (const r of rows) {
+    if (fold(r.t).includes(fq)) {
+      const bookName = codeToName[r.b] ?? 'John';
+      out.push({
+        book: bookName,
+        chapter: r.c,
+        verse: r.v,
+        text: r.t,
+        reference: `${getBookReference(bookName, language)} ${r.c}:${r.v}`,
+      });
+    }
+  }
+
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(key, JSON.stringify(out));
+    }
+  } catch {}
+  return out;
+}
+
+/** Métadonnées livres (inchangé) */
 export function getBibleBooks() {
   return bibleBooks;
 }
 
+/** Presse-papiers */
 export async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-export async function searchInBible(searchTerm: string, language: Language): Promise<BibleVerse[]> {
-  if (!searchTerm.trim()) return [];
-
-  // ---- Cache session pour accélérer les recherches répétées
-  const key = `twog:search:cache:${language}:${searchTerm.trim().toLowerCase()}`;
-  const cached = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
-  if (cached) {
-    try { return JSON.parse(cached); } catch {}
-  }
-
-  console.log(`Searching for "${searchTerm}" in ${language}...`);
-  const results: BibleVerse[] = [];
-
-  try {
-    for (const bookInfo of bibleBooks) {
-      const book = await loadBook(bookInfo.name, language);
-      if (book && book.Chapters) {
-        for (const chapterData of book.Chapters) {
-          for (const verseData of chapterData.Verses) {
-            if (searchInText(verseData.Text, searchTerm)) {
-              const bookReference = getBookReference(bookInfo.name, language);
-              results.push({
-                book: bookInfo.name,
-                chapter: chapterData.Number,
-                verse: verseData.ID,
-                text: verseData.Text,
-                reference: `${bookReference} ${chapterData.Number}:${verseData.ID}`
-              });
-            }
-          }
-        }
-      }
-    }
-    console.log(`Found ${results.length} verses for "${searchTerm}"`);
-
-    // Mémorise le résultat en session pour réutilisation instantanée
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(key, JSON.stringify(results));
-      }
-    } catch {}
-
-    return results;
-  } catch (error) {
-    console.error(`Error searching in Bible for ${language}:`, error);
-    return [];
-  }
-}
-
-/* ============================
-   Warm-up / Pré-chauffage (avec pause & limite)
-   ============================ */
-
-// Helper idle (sans SSR)
+/* ---- Warm-up ultra-light : charge le JSONL en idle ---- */
 type IdleDeadline = { timeRemaining: () => number };
 type IdleCb = (deadline?: IdleDeadline) => void;
 const idle = (cb: IdleCb) => {
   if (typeof window !== 'undefined' && (window as any).requestIdleCallback) {
     (window as any).requestIdleCallback(cb as any);
-  } else {
-    setTimeout(() => cb({ timeRemaining: () => 0 }), 250);
-  }
+  } else { setTimeout(() => cb({ timeRemaining: () => 0 }), 250); }
 };
-
-// État global du warmup (pausable)
 let warmed: Record<Language, boolean> = { fr: false, en: false };
-let warmupEnabled = true;
-export function pauseWarmup() { warmupEnabled = false; }
-export function resumeWarmup() { warmupEnabled = true; }
-
-type WarmOptions = {
-  /** Livres par lot (petit = moins d'impact UI) */
-  batchSize?: number;
-  /** Livres total à charger */
-  maxBooks?: number;
-  /** Termes à préchauffer (cache de recherche) */
-  searchTerms?: string[];
-  /** Délai avant de lancer la pré-recherche (ms) */
-  presearchDelayMs?: number;
-  /** Max de termes à préchauffer */
-  presearchMaxTerms?: number;
-};
-
-/**
- * Précharge les livres par paquets, avec une petite file d'attente (faible concurrence).
- */
-function preloadBooksInBatches(language: Language, batchSize: number, maxBooks: number): Promise<void> {
-  const names = bibleBooks.map(b => b.name).slice(0, Math.max(0, maxBooks));
-  let index = 0;
-
-  return new Promise<void>(resolve => {
-    const step = () => {
-      if (!warmupEnabled) return resolve(); // stop net si pause
-      if (index >= names.length) return resolve();
-
-      const slice = names.slice(index, index + batchSize);
-      index += batchSize;
-
-      // Charge ce lot en SÉRIE (au lieu de Promise.all) pour lisser l'impact CPU/JSON.parse
-      const loadNext = async (i: number): Promise<void> => {
-        if (i >= slice.length || !warmupEnabled) return;
-        try { await loadBook(slice[i], language); } catch {}
-        // micro-pause entre 2 livres pour laisser respirer l'UI
-        await new Promise(r => setTimeout(r, 10));
-        return loadNext(i + 1);
-      };
-
-      loadNext(0).finally(() => {
-        // Planifie le lot suivant pendant une période idle
-        idle(step);
-      });
-    };
-
-    // Démarre pendant une période idle
-    idle(step);
-  });
-}
-
-/**
- * Pré-chauffe le cache de recherche (sessionStorage) pour quelques mots fréquents.
- * Très léger : 1 terme toutes ~1.2s, stoppable si l'utilisateur navigue.
- */
-function prewarmSearchCache(language: Language, terms: string[], maxTerms: number) {
-  const list = terms.slice(0, Math.max(0, maxTerms));
-  let i = 0;
-
-  const run = () => {
-    if (!warmupEnabled) return;         // stop si pause
-    if (i >= list.length) return;       // terminé
-
-    const term = list[i++];
-    searchInBible(term, language).catch(() => { /* silencieux */ });
-
-    // espace entre 2 recherches pour ne pas impacter l'UI
-    setTimeout(() => idle(run), 1200);
-  };
-
-  idle(run);
-}
-
-/**
- * Version adoucie : petits lots + pause possible + pré-recherche limitée.
- */
-export function warmBibleCache(language: Language, opts: WarmOptions = {}) {
+export function warmBibleCache(language: Language) {
   if (warmed[language]) return;
   warmed[language] = true;
-
-  const {
-    batchSize = 6,           // ← petits lots (moins d'impact UI)
-    maxBooks = 66,           // ← précharge tout en arrière-plan
-    searchTerms,
-    presearchDelayMs = 3000, // ← on attend 3s avant la pré-recherche
-    presearchMaxTerms = 3,   // ← seulement 3 termes (ex: "amour", "Dieu", "Jésus")
-  } = opts;
-
-  const defaultTermsFr = ['amour', 'Dieu', 'Jésus', 'foi', 'paix', 'esprit'];
-  const defaultTermsEn = ['love', 'God', 'Jesus', 'faith', 'peace', 'spirit'];
-  const terms = searchTerms ?? (language === 'fr' ? defaultTermsFr : defaultTermsEn);
-
-  // 1) Compteurs de versets d'abord
-  idle(async () => {
-    try { await loadVerseCounts(language); } catch {}
-
-    // 2) Précharge des livres par petits lots (en série)
-    preloadBooksInBatches(language, batchSize, maxBooks)
-      .catch(() => { /* silencieux */ });
-
-    // 3) Pré-recherche ultra légère et différée
-    setTimeout(() => {
-      if (!warmupEnabled) return;
-      prewarmSearchCache(language, terms, presearchMaxTerms);
-    }, presearchDelayMs);
-  });
+  idle(() => { ensureLoaded(language).catch(() => {}); });
 }
