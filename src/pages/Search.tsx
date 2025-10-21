@@ -11,10 +11,15 @@ import {
 } from 'lucide-react';
 import { saveSlot as saveQuickSlot } from '../services/readingSlots';
 
+/* -------- Types -------- */
+
+type ResultItem = BibleVerse & { occ: number };
+
 type Grouped = {
   bookId: string;
   displayName: string;
-  verses: BibleVerse[];
+  verses: ResultItem[];
+  occ: number; // total occurrences in this book
 };
 
 /* ========= Utils (accents/ligatures, préfixe, etc.) ========= */
@@ -92,6 +97,29 @@ function matchesFlexible(text: string, query: string) {
   return paddedText.includes(` ${normQuery}`);
 }
 
+/** Compte le nombre d’occurrences selon la même logique que matchesFlexible */
+function countMatchesFlexible(text: string, query: string): number {
+  const normQuery = normalizeForSearch(query);
+  if (!normQuery) return 0;
+
+  const { norm } = buildNormalizedWithMap(text);
+  if (!norm) return 0;
+
+  const endsWithSpace = /\s$/.test(query);
+  const haystack = endsWithSpace ? ` ${norm} ` : ` ${norm}`;
+  const needle   = endsWithSpace ? ` ${normQuery} ` : ` ${normQuery}`;
+
+  let from = 0;
+  let count = 0;
+  while (true) {
+    const pos = haystack.indexOf(needle, from);
+    if (pos === -1) break;
+    count++;
+    from = pos + needle.length; // pas de chevauchement attendu (séparateurs = espaces)
+  }
+  return count;
+}
+
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, '&amp;')
@@ -117,20 +145,21 @@ function highlightFlexible(text: string, query: string) {
   while (true) {
     const pos = padded.indexOf(needle, from);
     if (pos === -1) break;
-    // On réutilise l’index tel quel, comme précédemment
     const startInNorm = pos;
-    const endInNorm = pos + (endsWithSpace ? normQuery.length : normQuery.length);
+    const endInNorm = pos + normQuery.length; // exclusif
     matches.push({ start: startInNorm, end: endInNorm });
     from = pos + needle.length;
   }
   if (!matches.length) return escapeHtml(text);
 
   // Conversion → indices d’origine
-  const ranges = matches.map(({ start, end }) => {
-    const origStart = map[Math.max(0, start)];
-    const origEnd = (map[Math.min(map.length - 1, end - 1)] ?? map[map.length - 1]) + 1; // exclu
-    return { start: origStart, end: origEnd };
-  }).sort((a, b) => a.start - b.start);
+  const ranges = matches
+    .map(({ start, end }) => {
+      const origStart = map[Math.max(0, start)];
+      const origEnd = (map[Math.min(map.length - 1, end - 1)] ?? map[map.length - 1]) + 1; // exclu
+      return { start: origStart, end: origEnd };
+    })
+    .sort((a, b) => a.start - b.start);
 
   // Fusion des recouvrements
   const merged: typeof ranges = [];
@@ -174,7 +203,7 @@ export default function Search() {
     sessionStorage.setItem(queryKey, query);
   }, [query, queryKey]);
 
-  const [results, setResults] = useState<BibleVerse[]>([]);
+  const [results, setResults] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -203,11 +232,15 @@ export default function Search() {
     const handle = setTimeout(async () => {
       setLoading(true);
       try {
-        // Large moissonnage côté service
+        // Moissonnage côté service
         const res = await searchInBible(query, state.settings.language);
-        // Filtrage malin côté UI (préfixe/accents/ligatures)
-        const filtered = res.filter(v => matchesFlexible(v.text, query));
-        setResults(filtered);
+        // Enrichissement avec le nombre d'occurrences, puis filtrage
+        const enriched: ResultItem[] = [];
+        for (const v of res) {
+          const occ = countMatchesFlexible(v.text, query);
+          if (occ > 0) enriched.push({ ...v, occ });
+        }
+        setResults(enriched);
       } finally {
         setLoading(false);
       }
@@ -215,9 +248,9 @@ export default function Search() {
     return () => clearTimeout(handle);
   }, [query, state.settings.language]);
 
-  // Groupement par livre
+  // Groupement par livre + somme des occurrences
   const grouped: Grouped[] = useMemo(() => {
-    const map = new Map<string, BibleVerse[]>();
+    const map = new Map<string, ResultItem[]>();
     for (const v of results) {
       if (!map.has(v.book)) map.set(v.book, []);
       map.get(v.book)!.push(v);
@@ -225,7 +258,10 @@ export default function Search() {
     const arr: Grouped[] = Array.from(map.entries()).map(([bookId, verses]) => ({
       bookId,
       displayName: getBookName(bookId),
-      verses: verses.sort((a, b) => (a.chapter === b.chapter ? a.verse - b.verse : a.chapter - b.chapter)),
+      verses: verses.sort((a, b) =>
+        a.chapter === b.chapter ? a.verse - b.verse : a.chapter - b.chapter
+      ),
+      occ: verses.reduce((s, x) => s + x.occ, 0),
     }));
     arr.sort((a, b) => bibleOrder(a.bookId) - bibleOrder(b.bookId));
     return arr;
@@ -241,7 +277,9 @@ export default function Search() {
     try {
       const raw = sessionStorage.getItem(expandedKey(query));
       if (raw) restored = JSON.parse(raw);
-    } catch { restored = null; }
+    } catch {
+      restored = null;
+    }
     if (restored && Object.keys(restored).length) {
       const next: Record<string, boolean> = {};
       for (const g of grouped) next[g.bookId] = !!restored[g.bookId];
@@ -301,13 +339,16 @@ export default function Search() {
     sessionStorage.removeItem(scrollKey(query));
   };
 
-  const openInReading = (v: BibleVerse) => {
+  const openInReading = (v: ResultItem) => {
     try { saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse }); } catch {}
     sessionStorage.setItem(scrollKey(query), String(window.scrollY || 0));
     navigateToVerse(v.book, v.chapter, v.verse);
   };
 
-  const total = results.length;
+  const totalOccurrences = useMemo(
+    () => results.reduce((s, v) => s + v.occ, 0),
+    [results]
+  );
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
@@ -317,7 +358,7 @@ export default function Search() {
           {state.settings.language === 'fr' ? 'Recherche' : 'Search'}
         </h1>
 
-        {/* --- Petit MASQUE collant en haut pour éviter le "morceau" qui dépasse --- */}
+        {/* Petit masque collant */}
         <div
           className={`sticky top-0 z-20 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
           style={{ height: 8 }}
@@ -325,7 +366,11 @@ export default function Search() {
         />
 
         {/* Barre de recherche (sticky) */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-3 sticky top-20 sm:top-16 z-30`}>
+        <div
+          className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow border ${
+            isDark ? 'border-gray-700' : 'border-gray-200'
+          } p-3 sticky top-20 sm:top-16 z-30`}
+        >
           <form onSubmit={e => e.preventDefault()} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <SearchIcon className={isDark ? 'text-gray-400' : 'text-gray-500'} size={18} />
@@ -351,7 +396,9 @@ export default function Search() {
                   type="button"
                   onClick={clearQuery}
                   className={`p-2 rounded-lg ${
-                    isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    isDark
+                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                   aria-label={state.settings.language === 'fr' ? 'Effacer' : 'Clear'}
                 >
@@ -361,7 +408,7 @@ export default function Search() {
             </div>
           </form>
 
-          {/* Ligne d’infos + actions — reste sur une ligne */}
+          {/* Ligne d’infos + actions — une seule ligne */}
           <div className="mt-2 text-sm flex items-center justify-between gap-2">
             <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} flex-1 min-w-0 truncate`}>
               {loading ? (
@@ -371,7 +418,8 @@ export default function Search() {
                 </>
               ) : query.trim().length >= 2 ? (
                 <>
-                  {state.settings.language === 'fr' ? 'Résultats' : 'Results'} "{query}" ({total})
+                  {state.settings.language === 'fr' ? 'Résultats' : 'Results'} "{query}"
+                  {' '}({totalOccurrences})
                 </>
               ) : (
                 state.settings.language === 'fr'
@@ -380,7 +428,7 @@ export default function Search() {
               )}
             </div>
 
-            {grouped.length > 1 && total > 0 && !loading && (
+            {grouped.length > 1 && totalOccurrences > 0 && !loading && (
               <div className="flex flex-shrink-0 space-x-2">
                 <button
                   onClick={expandAll}
@@ -390,7 +438,11 @@ export default function Search() {
                 </button>
                 <button
                   onClick={collapseAll}
-                  className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  className={`text-xs px-2 py-1 rounded ${
+                    isDark
+                      ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
                 >
                   {state.settings.language === 'fr' ? 'Tout fermer' : 'Collapse all'}
                 </button>
@@ -401,17 +453,14 @@ export default function Search() {
 
         {/* Résultats */}
         <div className="mt-4">
-          {total === 0 && !loading && query.trim().length >= 2 && (
+          {totalOccurrences === 0 && !loading && query.trim().length >= 2 && (
             <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-center py-10`}>
-              {state.settings.language === 'fr'
-                ? 'Aucun verset trouvé.'
-                : 'No verses found.'}
+              {state.settings.language === 'fr' ? 'Aucun verset trouvé.' : 'No verses found.'}
             </div>
           )}
 
           {grouped.map(group => {
             const open = !!expanded[group.bookId];
-            const count = group.verses.length;
 
             return (
               <div
@@ -431,7 +480,7 @@ export default function Search() {
                     )}
                     <span className="font-semibold">{group.displayName}</span>
                   </div>
-                  <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>({count})</span>
+                  <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>({group.occ})</span>
                 </button>
 
                 {open && (
@@ -448,8 +497,13 @@ export default function Search() {
                           className={`${isDark ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'} cursor-pointer rounded-md p-3 border ${isDark ? 'border-gray-700' : 'border-gray-200'} transition`}
                           title={state.settings.language === 'fr' ? 'Ouvrir dans Lecture' : 'Open in Reading'}
                         >
-                          <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} font-medium mb-1`}>
-                            {getBookName(v.book)} {v.chapter}:{v.verse}
+                          <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} font-medium mb-1 flex items-center gap-2`}>
+                            <span>{getBookName(v.book)} {v.chapter}:{v.verse}</span>
+                            {v.occ > 1 && (
+                              <span className={`${isDark ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-700'} text-[11px] px-1.5 py-0.5 rounded`}>
+                                ({v.occ})
+                              </span>
+                            )}
                           </div>
                           <div
                             className={isDark ? 'text-gray-200' : 'text-gray-700'}
