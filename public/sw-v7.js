@@ -1,7 +1,7 @@
-// sw-v7.js — prod: https+cache propre+MAJ immédiate
-const CACHE_VERSION = 'v9';
+// sw-v7.js — prod: https+cache propre+MAJ immédiate + fallback navigation robuste
+const CACHE_VERSION = 'v10';
 const CACHE_NAME = `twog-${CACHE_VERSION}`;
-const APP_SHELL = ['/', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
+const APP_SHELL = ['/', '/index.html', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
 
 const BIBLES_INDEX_URL = '/data/bible/bibles-index.json';
 const PRECACHE_FULL_BIBLE = true;
@@ -34,11 +34,19 @@ self.addEventListener('message', (e) => {
   }
 });
 
+// --- helpers pour fallback app-shell ---
+async function getAppShellFromCache(cache) {
+  // ignoreSearch permet de couvrir '/', '/?x=y' etc. et fallback sur '/index.html'
+  return (await cache.match('/', { ignoreSearch: true })) ||
+         (await cache.match('/index.html', { ignoreSearch: true }));
+}
+
 async function precacheBibleFromIndex(cache) {
   try {
     const res = await fetch(BIBLES_INDEX_URL, { cache: 'no-store' });
     if (!res.ok) return;
     const idx = await res.json();
+    // Multi-langues : précache toutes les entrées présentes dans l'index
     const list = Object.values(idx).flat().map(normalizeUrl);
     for (let i = 0; i < list.length; i += PRECACHE_CHUNK) {
       await Promise.all(list.slice(i, i + PRECACHE_CHUNK).map(async (u) => {
@@ -92,17 +100,17 @@ self.addEventListener('fetch', (event) => {
     ? req
     : new Request(href, { headers: req.headers, credentials: req.credentials, mode: req.mode, cache: 'no-store' });
 
-  // Navigations → network-first (fallback cache '/')
+  // Navigations → network-first (fallback app-shell même avec ?query)
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
         const preload = await event.preloadResponse; if (preload) return preload;
         const net = await fetch(normReq, { cache: 'no-store' });
-        if (url.pathname === '/' && net && net.ok) (await caches.open(CACHE_NAME)).put('/', net.clone());
         return net;
       } catch {
         const cache = await caches.open(CACHE_NAME);
-        return (await cache.match('/')) || new Response('Offline', { status: 503 });
+        const shell = await getAppShellFromCache(cache);
+        return shell || new Response('Offline', { status: 503 });
       }
     })());
     return;
@@ -134,7 +142,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Par défaut → network-first puis cache
+  // Par défaut → network-first puis cache (fallback app-shell si même origine)
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     try {
@@ -145,7 +153,8 @@ self.addEventListener('fetch', (event) => {
       const cached = await cache.match(normReq);
       if (cached) return cached;
       if (url.origin === self.location.origin) {
-        const home = await cache.match('/'); if (home) return home;
+        const shell = await getAppShellFromCache(cache);
+        if (shell) return shell;
       }
       return new Response('Offline', { status: 503 });
     }
