@@ -1,5 +1,5 @@
-// sw-v7.js — prod: https+cache propre+MAJ immédiate + fallback navigation robuste + precache assets index
-const CACHE_VERSION = 'v11';
+// sw-v7.js — prod: https+cache propre+MAJ immédiate + fallback navigation robuste + precache assets index + fix navigate
+const CACHE_VERSION = 'v12';
 const CACHE_NAME = `twog-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/index.html', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
 
@@ -44,16 +44,12 @@ async function getAppShellFromCache(cache) {
 // --- precache des assets référencés par index.html ---
 async function precacheAppShellAssets(cache) {
   try {
-    // On récupère l'index sans utiliser le cache HTTP
     const res = await fetch('/index.html', { cache: 'no-store' });
     if (!res || !res.ok) return;
 
-    // On met la version fraîche d'index.html dans notre cache
     await cache.put('/index.html', res.clone());
-
     const html = await res.text();
 
-    // Récupère toutes les URLs src/href de <script> et <link>
     const urls = new Set();
     const rx = /<(?:script|link)\b[^>]+?(?:src|href)=["']([^"']+)["']/gi;
     let m;
@@ -61,14 +57,10 @@ async function precacheAppShellAssets(cache) {
       const raw = m[1];
       try {
         const abs = new URL(raw, ORIGIN);
-        // On ne garde que même origine
-        if (abs.origin === ORIGIN) {
-          urls.add(abs.pathname + abs.search);
-        }
+        if (abs.origin === ORIGIN) urls.add(abs.pathname + abs.search);
       } catch {}
     }
 
-    // Filtre aux assets utiles pour un reload offline (hashés Vite)
     const toCache = [...urls].filter(u =>
       u.startsWith('/assets/') ||
       u.endsWith('.js') || u.endsWith('.css') ||
@@ -79,14 +71,11 @@ async function precacheAppShellAssets(cache) {
       u.endsWith('.webp')
     );
 
-    // Télécharge et stocke chaque asset
     await Promise.all(toCache.map(async (u) => {
       try {
         const req = new Request(u, { cache: 'no-store' });
         const r = await fetch(req);
-        if (r && (r.ok || r.type === 'opaque')) {
-          await cache.put(req, r.clone());
-        }
+        if (r && (r.ok || r.type === 'opaque')) await cache.put(req, r.clone());
       } catch {}
     }));
   } catch {}
@@ -103,7 +92,7 @@ async function precacheBibleFromIndex(cache) {
       await Promise.all(list.slice(i, i + PRECACHE_CHUNK).map(async (u) => {
         try {
           const req = new Request(u, { cache: 'no-store' });
-        const r = await fetch(req);
+          const r = await fetch(req);
           if (r && (r.ok || r.type === 'opaque')) await cache.put(req, r.clone());
         } catch {}
       }));
@@ -114,13 +103,9 @@ async function precacheBibleFromIndex(cache) {
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    // 1) App shell de base
     await cache.addAll(APP_SHELL);
-    // 2) Index + assets référencés (JS/CSS/fonts/images) pour un reload offline fiable
     await precacheAppShellAssets(cache);
-    // 3) Bibles (FR/EN/…)
     if (PRECACHE_FULL_BIBLE) await precacheBibleFromIndex(cache);
-    // Activation immédiate
     await self.skipWaiting();
   })());
 });
@@ -150,73 +135,93 @@ const isBibleJson = (url) =>
 
 // Strategies
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-  const href = normalizeUrl(url.href);
-  const normReq = (href === url.href)
-    ? req
-    : new Request(href, { headers: req.headers, credentials: req.credentials, mode: req.mode, cache: 'no-store' });
+  try {
+    const req = event.request;
+    if (req.method !== 'GET') return;
 
-  // Navigations → network-first (fallback app-shell même avec ?query)
-  if (req.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const preload = await event.preloadResponse; if (preload) return preload;
-        const net = await fetch(normReq, { cache: 'no-store' });
-        return net;
-      } catch {
-        const cache = await caches.open(CACHE_NAME);
-        const shell = await getAppShellFromCache(cache);
-        return shell || new Response('Offline', { status: 503 });
-      }
-    })());
-    return;
-  }
+    const url = new URL(req.url);
 
-  // JSON/JSONL Bible → stale-while-revalidate (réseau forcé)
-  if (isBibleJson(url)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(normReq);
-      const fetchAndUpdate = fetch(normReq, { cache: 'no-store' })
-        .then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(normReq, res.clone()); return res; })
-        .catch(() => null);
-      return cached || (await fetchAndUpdate) || new Response('{"error":"offline"}', { status: 503, headers: { 'Content-Type': 'application/json' } });
-    })());
-    return;
-  }
-
-  // Assets statiques → cache-first + MAJ BG
-  if (isStaticAsset(url)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(normReq);
-      const fetchAndUpdate = fetch(normReq, { cache: 'no-store' })
-        .then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(normReq, res.clone()); return res; })
-        .catch(() => null);
-      return cached || (await fetchAndUpdate) || new Response('Offline asset', { status: 503 });
-    })());
-    return;
-  }
-
-  // Par défaut → network-first puis cache (fallback app-shell si même origine)
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    try {
-      const res = await fetch(normReq, { cache: 'no-store' });
-      if (res && (res.ok || res.type === 'opaque')) cache.put(normReq, res.clone());
-      return res;
-    } catch {
-      const cached = await cache.match(normReq);
-      if (cached) return cached;
-      if (url.origin === self.location.origin) {
-        const shell = await getAppShellFromCache(cache);
-        if (shell) return shell;
-      }
-      return new Response('Offline', { status: 503 });
+    // --- NAVIGATION / DOCUMENTS ---
+    // IMPORTANT : ne pas reconstruire la Request quand destination=document / mode=navigate
+    if (req.mode === 'navigate' || req.destination === 'document') {
+      event.respondWith((async () => {
+        try {
+          const preload = await event.preloadResponse; if (preload) return preload;
+          // Utiliser la requête d'origine telle quelle
+          const net = await fetch(req);
+          return net;
+        } catch {
+          const cache = await caches.open(CACHE_NAME);
+          const shell = await getAppShellFromCache(cache);
+          return shell || new Response('Offline', { status: 503 });
+        }
+      })());
+      return;
     }
-  })());
+
+    // --- SUB-RESOURCES ---
+    // On normalise l'URL si besoin, mais SANS mode 'navigate'
+    const href = normalizeUrl(url.href);
+    const normReq = (href === url.href)
+      ? req
+      : new Request(href, {
+          headers: req.headers,
+          credentials: req.credentials,
+          // pas de 'mode: navigate' ici !
+          cache: 'no-store'
+        });
+
+    // JSON/JSONL Bible → stale-while-revalidate
+    if (isBibleJson(url)) {
+      event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(normReq);
+        const fetchAndUpdate = fetch(normReq, { cache: 'no-store' })
+          .then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(normReq, res.clone()); return res; })
+          .catch(() => null);
+        return cached || (await fetchAndUpdate) || new Response('{"error":"offline"}', { status: 503, headers: { 'Content-Type': 'application/json' } });
+      })());
+      return;
+    }
+
+    // Assets statiques → cache-first + MAJ BG
+    if (isStaticAsset(url)) {
+      event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(normReq);
+        const fetchAndUpdate = fetch(normReq, { cache: 'no-store' })
+          .then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(normReq, res.clone()); return res; })
+          .catch(() => null);
+        return cached || (await fetchAndUpdate) || new Response('Offline asset', { status: 503 });
+      })());
+      return;
+    }
+
+    // Par défaut → network-first puis cache (fallback app-shell si même origine)
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const res = await fetch(normReq, { cache: 'no-store' });
+        if (res && (res.ok || res.type === 'opaque')) cache.put(normReq, res.clone());
+        return res;
+      } catch {
+        const cached = await cache.match(normReq);
+        if (cached) return cached;
+        if (url.origin === self.location.origin) {
+          const shell = await getAppShellFromCache(cache);
+          if (shell) return shell;
+        }
+        return new Response('Offline', { status: 503 });
+      }
+    })());
+  } catch (err) {
+    // Sécurité : en cas d'exception synchrone, toujours répondre quelque chose
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const shell = await getAppShellFromCache(cache);
+      return shell || new Response('Offline', { status: 503 });
+    })());
+  }
 });
 
 
