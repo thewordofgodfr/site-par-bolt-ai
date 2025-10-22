@@ -1,5 +1,5 @@
 // sw-v7.js — prod: https+cache propre+MAJ immédiate
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const CACHE_NAME = `twog-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
 
@@ -79,7 +79,8 @@ const isStaticAsset = (url) =>
   url.pathname.endsWith('.webp') || url.pathname.endsWith('.woff2');
 
 const isBibleJson = (url) =>
-  url.pathname.startsWith('/data/bible/') && url.pathname.endsWith('.json');
+  url.pathname.startsWith('/data/bible/') &&
+  (url.pathname.endsWith('.json') || url.pathname.endsWith('.jsonl'));
 
 // Strategies
 self.addEventListener('fetch', (event) => {
@@ -107,7 +108,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // JSON Bible → stale-while-revalidate (réseau forcé)
+  // JSON/JSONL Bible → stale-while-revalidate (réseau forcé)
   if (isBibleJson(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
@@ -150,3 +151,4 @@ self.addEventListener('fetch', (event) => {
     }
   })());
 });
+
