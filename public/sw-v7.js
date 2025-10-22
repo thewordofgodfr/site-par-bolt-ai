@@ -39,7 +39,7 @@ async function precacheBibleFromIndex(cache) {
     const res = await fetch(BIBLES_INDEX_URL, { cache: 'no-store' });
     if (!res.ok) return;
     const idx = await res.json();
-    const list = [...(idx.fr || []), ...(idx.en || [])].map(normalizeUrl);
+    const list = Object.values(idx).flat().map(normalizeUrl);
     for (let i = 0; i < list.length; i += PRECACHE_CHUNK) {
       await Promise.all(list.slice(i, i + PRECACHE_CHUNK).map(async (u) => {
         try {
