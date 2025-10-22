@@ -1,5 +1,5 @@
-// sw-v7.js — prod: https+cache propre+MAJ immédiate + fallback navigation robuste
-const CACHE_VERSION = 'v10';
+// sw-v7.js — prod: https+cache propre+MAJ immédiate + fallback navigation robuste + precache assets index
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `twog-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/index.html', '/favicon.ico', '/logo192.png', '/logo512.png', '/site.webmanifest'];
 
@@ -36,9 +36,60 @@ self.addEventListener('message', (e) => {
 
 // --- helpers pour fallback app-shell ---
 async function getAppShellFromCache(cache) {
-  // ignoreSearch permet de couvrir '/', '/?x=y' etc. et fallback sur '/index.html'
+  // ignoreSearch couvre '/', '/?x=y' etc., puis fallback '/index.html'
   return (await cache.match('/', { ignoreSearch: true })) ||
          (await cache.match('/index.html', { ignoreSearch: true }));
+}
+
+// --- precache des assets référencés par index.html ---
+async function precacheAppShellAssets(cache) {
+  try {
+    // On récupère l'index sans utiliser le cache HTTP
+    const res = await fetch('/index.html', { cache: 'no-store' });
+    if (!res || !res.ok) return;
+
+    // On met la version fraîche d'index.html dans notre cache
+    await cache.put('/index.html', res.clone());
+
+    const html = await res.text();
+
+    // Récupère toutes les URLs src/href de <script> et <link>
+    const urls = new Set();
+    const rx = /<(?:script|link)\b[^>]+?(?:src|href)=["']([^"']+)["']/gi;
+    let m;
+    while ((m = rx.exec(html)) !== null) {
+      const raw = m[1];
+      try {
+        const abs = new URL(raw, ORIGIN);
+        // On ne garde que même origine
+        if (abs.origin === ORIGIN) {
+          urls.add(abs.pathname + abs.search);
+        }
+      } catch {}
+    }
+
+    // Filtre aux assets utiles pour un reload offline (hashés Vite)
+    const toCache = [...urls].filter(u =>
+      u.startsWith('/assets/') ||
+      u.endsWith('.js') || u.endsWith('.css') ||
+      u.endsWith('.woff2') || u.endsWith('.woff') ||
+      u.endsWith('.ttf') || u.endsWith('.eot') ||
+      u.endsWith('.svg') || u.endsWith('.png') ||
+      u.endsWith('.jpg') || u.endsWith('.jpeg') ||
+      u.endsWith('.webp')
+    );
+
+    // Télécharge et stocke chaque asset
+    await Promise.all(toCache.map(async (u) => {
+      try {
+        const req = new Request(u, { cache: 'no-store' });
+        const r = await fetch(req);
+        if (r && (r.ok || r.type === 'opaque')) {
+          await cache.put(req, r.clone());
+        }
+      } catch {}
+    }));
+  } catch {}
 }
 
 async function precacheBibleFromIndex(cache) {
@@ -52,7 +103,7 @@ async function precacheBibleFromIndex(cache) {
       await Promise.all(list.slice(i, i + PRECACHE_CHUNK).map(async (u) => {
         try {
           const req = new Request(u, { cache: 'no-store' });
-          const r = await fetch(req);
+        const r = await fetch(req);
           if (r && (r.ok || r.type === 'opaque')) await cache.put(req, r.clone());
         } catch {}
       }));
@@ -63,9 +114,14 @@ async function precacheBibleFromIndex(cache) {
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
+    // 1) App shell de base
     await cache.addAll(APP_SHELL);
+    // 2) Index + assets référencés (JS/CSS/fonts/images) pour un reload offline fiable
+    await precacheAppShellAssets(cache);
+    // 3) Bibles (FR/EN/…)
     if (PRECACHE_FULL_BIBLE) await precacheBibleFromIndex(cache);
-    await self.skipWaiting(); // prêt à activer tout de suite
+    // Activation immédiate
+    await self.skipWaiting();
   })());
 });
 
@@ -74,7 +130,7 @@ self.addEventListener('activate', (event) => {
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
     if ('navigationPreload' in self.registration) await self.registration.navigationPreload.enable();
-    await self.clients.claim(); // contrôle immédiat de toutes les pages
+    await self.clients.claim();
   })());
 });
 
@@ -84,7 +140,9 @@ const isStaticAsset = (url) =>
   url.pathname.endsWith('.js') || url.pathname.endsWith('.css') ||
   url.pathname.endsWith('.png') || url.pathname.endsWith('.jpg') ||
   url.pathname.endsWith('.jpeg') || url.pathname.endsWith('.svg') ||
-  url.pathname.endsWith('.webp') || url.pathname.endsWith('.woff2');
+  url.pathname.endsWith('.webp') || url.pathname.endsWith('.woff2') ||
+  url.pathname.endsWith('.woff') || url.pathname.endsWith('.ttf') ||
+  url.pathname.endsWith('.eot');
 
 const isBibleJson = (url) =>
   url.pathname.startsWith('/data/bible/') &&
@@ -160,4 +218,5 @@ self.addEventListener('fetch', (event) => {
     }
   })());
 });
+
 
