@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { getBibleBooks, getChapter, copyToClipboard } from '../services/bibleService';
+import { getBibleBooks, getChapter, getRandomVerse, copyToClipboard } from '../services/bibleService';
 import { BibleBook, BibleChapter } from '../types/bible';
 import {
   ChevronDown,
