@@ -373,7 +373,7 @@ export default function Search() {
         >
           <form onSubmit={e => e.preventDefault()} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className={isDark ? 'text-gray-400' : 'text-gray-500'} size={18} />
+              <SearchIcon className={isDark ? 'text-white/70' : 'text-gray-500'} size={18} />
             </div>
             <input
               value={query}
@@ -397,7 +397,7 @@ export default function Search() {
                   onClick={clearQuery}
                   className={`p-2 rounded-lg ${
                     isDark
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                      ? 'text-white/80 hover:text-white hover:bg-gray-700'
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                   aria-label={state.settings.language === 'fr' ? 'Effacer' : 'Clear'}
@@ -410,7 +410,7 @@ export default function Search() {
 
           {/* Ligne d’infos + actions — une seule ligne */}
           <div className="mt-2 text-sm flex items-center justify-between gap-2">
-            <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} flex-1 min-w-0 truncate`}>
+            <div className={`${isDark ? 'text-white' : 'text-gray-600'} flex-1 min-w-0 truncate`}>
               {loading ? (
                 <>
                   <Loader2 className="inline mr-2 animate-spin" size={16} />
@@ -440,7 +440,7 @@ export default function Search() {
                   onClick={collapseAll}
                   className={`text-xs px-2 py-1 rounded ${
                     isDark
-                      ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      ? 'bg-gray-700 text-white hover:bg-gray-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
@@ -454,7 +454,7 @@ export default function Search() {
         {/* Résultats */}
         <div className="mt-4">
           {totalOccurrences === 0 && !loading && query.trim().length >= 2 && (
-            <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-center py-10`}>
+            <div className={`${isDark ? 'text-white' : 'text-gray-600'} text-center py-10`}>
               {state.settings.language === 'fr' ? 'Aucun verset trouvé.' : 'No verses found.'}
             </div>
           )}
@@ -469,18 +469,18 @@ export default function Search() {
               >
                 <button
                   onClick={() => toggleGroup(group.bookId)}
-                  className={`w-full flex items-center justify-between px-4 py-3 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
+                  className={`w-full flex items-center justify-between px-4 py-3 ${isDark ? 'text-white' : 'text-gray-800'}`}
                   aria-expanded={open}
                 >
                   <div className="flex items-center">
                     {open ? (
-                      <ChevronDown className={`mr-2 ${isDark ? 'text-gray-300' : 'text-gray-500'}`} size={18} />
+                      <ChevronDown className={`mr-2 ${isDark ? 'text-white/80' : 'text-gray-500'}`} size={18} />
                     ) : (
-                      <ChevronRight className={`mr-2 ${isDark ? 'text-gray-300' : 'text-gray-500'}`} size={18} />
+                      <ChevronRight className={`mr-2 ${isDark ? 'text-white/80' : 'text-gray-500'}`} size={18} />
                     )}
                     <span className="font-semibold">{group.displayName}</span>
                   </div>
-                  <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>({group.occ})</span>
+                  <span className={`${isDark ? 'text-white/80' : 'text-gray-600'}`}>({group.occ})</span>
                 </button>
 
                 {open && (
@@ -500,13 +500,13 @@ export default function Search() {
                           <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} font-medium mb-1 flex items-center gap-2`}>
                             <span>{getBookName(v.book)} {v.chapter}:{v.verse}</span>
                             {v.occ > 1 && (
-                              <span className={`${isDark ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-700'} text-[11px] px-1.5 py-0.5 rounded`}>
+                              <span className={`${isDark ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'} text-[11px] px-1.5 py-0.5 rounded`}>
                                 ({v.occ})
                               </span>
                             )}
                           </div>
                           <div
-                            className={isDark ? 'text-gray-200' : 'text-gray-700'}
+                            className={isDark ? 'text-white' : 'text-gray-700'}
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
                             dangerouslySetInnerHTML={{ __html: highlightFlexible(v.text, query) }}
                           />
