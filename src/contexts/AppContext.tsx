@@ -144,6 +144,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.settings]);
 
+  /** 👉 Appliquer la classe "dark" sur <html> pour activer les styles dark globalement */
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      if (state.settings.theme === 'dark') root.classList.add('dark');
+      else root.classList.remove('dark');
+    } catch {}
+  }, [state.settings.theme]);
+
   /** Mise à jour partielle des settings (thème, taille police, langue) */
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     Object.entries(newSettings).forEach(([key, value]) => {
