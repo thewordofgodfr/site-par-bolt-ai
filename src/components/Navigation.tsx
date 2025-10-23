@@ -26,19 +26,17 @@ export default function Navigation() {
   const baseBtn =
     'transition-all duration-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
   const activeBtn = isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700';
+  // 👉 Texte des items inactifs en dark : blanc quasi-plein
   const idleBtn = isDark
-    ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+    ? 'text-white/90 hover:bg-gray-700 hover:text-white'
     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
 
   return (
     <nav
       className={[
-        // Collé en haut — z-40 pour laisser passer les overlays (livres) en z-50
         'sticky top-0 z-40',
-        // Fond avec flou pour lisibilité au scroll
         isDark ? 'bg-gray-800/95' : 'bg-white/95',
         'backdrop-blur',
-        // Liseré + ombre légère
         isDark ? 'border-b border-gray-700 shadow-sm' : 'border-b border-gray-200 shadow-sm',
         'transition-colors duration-200',
       ].join(' ')}
@@ -52,7 +50,7 @@ export default function Navigation() {
               return (
                 <button
                   key={id}
-                  onClick={() => dispatch({ type: 'SET_PAGE', payload: id })}
+                  onClick={() => dispatch({ type: 'SET_PAGE', payload: id as any })}
                   aria-current={active ? 'page' : undefined}
                   title={label}
                   className={[
