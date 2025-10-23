@@ -39,7 +39,7 @@ export default function Settings() {
 
               {/* Theme Toggle */}
               <div className="mb-8">
-                <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                   {state.settings.language === 'fr' ? "Mode d'affichage" : 'Display mode'}
                 </label>
                 <div className="grid grid-cols-2 gap-4">
@@ -49,7 +49,7 @@ export default function Settings() {
                       state.settings.theme === 'light'
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : isDark
-                        ? 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                        ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
                         : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -62,7 +62,7 @@ export default function Settings() {
                       state.settings.theme === 'dark'
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : isDark
-                        ? 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                        ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
                         : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -74,7 +74,7 @@ export default function Settings() {
 
               {/* Font Size */}
               <div>
-                <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
+                <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'} flex items-center`}>
                   <Type size={16} className="mr-2" />
                   {t('fontSize')}
                 </label>
@@ -87,7 +87,7 @@ export default function Settings() {
                         state.settings.fontSize === value
                           ? 'border-green-500 bg-green-50 text-green-700'
                           : isDark
-                          ? 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                          ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
                           : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
                       }`}
                     >
@@ -99,7 +99,7 @@ export default function Settings() {
                 {/* Font Size Preview */}
                 <div className={`mt-4 p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg`}>
                   <p
-                    className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`}
+                    className={`${isDark ? 'text-white' : 'text-gray-700'}`}
                     style={{ fontSize: `${state.settings.fontSize}px` }}
                   >
                     {state.settings.language === 'fr'
@@ -124,7 +124,7 @@ export default function Settings() {
                     state.settings.language === 'fr'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : isDark
-                      ? 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                      ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
                       : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
                   }`}
                 >
@@ -132,7 +132,7 @@ export default function Settings() {
                     <span className="text-2xl">🇫🇷</span>
                     <div className="text-left">
                       <div className="font-semibold">Français</div>
-                      <div className="text-sm opacity-75">Louis Segond 1910</div>
+                      <div className={`${isDark ? 'text-white/80' : 'text-gray-600'} text-sm`}>Louis Segond 1910</div>
                     </div>
                   </div>
                   {state.settings.language === 'fr' && (
@@ -146,7 +146,7 @@ export default function Settings() {
                     state.settings.language === 'en'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : isDark
-                      ? 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'
+                      ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
                       : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
                   }`}
                 >
@@ -154,7 +154,7 @@ export default function Settings() {
                     <span className="text-2xl">🇺🇸</span>
                     <div className="text-left">
                       <div className="font-semibold">English</div>
-                      <div className="text-sm opacity-75">King James Version</div>
+                      <div className={`${isDark ? 'text-white/80' : 'text-gray-600'} text-sm`}>King James Version</div>
                     </div>
                   </div>
                   {state.settings.language === 'en' && (
@@ -165,7 +165,7 @@ export default function Settings() {
 
               {/* Language Info */}
               <div className={`mt-6 p-4 ${isDark ? 'bg-gray-700' : 'bg-blue-50'} rounded-lg`}>
-                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-blue-700'}`}>
+                <p className={`text-sm ${isDark ? 'text-white/90' : 'text-blue-700'}`}>
                   {state.settings.language === 'fr'
                     ? "La langue est détectée automatiquement selon votre navigateur, mais vous pouvez la changer manuellement."
                     : 'Language is automatically detected based on your browser, but you can change it manually.'}
@@ -184,7 +184,7 @@ export default function Settings() {
             <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
               {state.settings.language === 'fr' ? 'Informations' : 'Information'}
             </h3>
-            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
+            <p className={`${isDark ? 'text-white/90' : 'text-gray-600'} leading-relaxed`}>
               {state.settings.language === 'fr'
                 ? 'Vos paramètres sont automatiquement sauvegardés et seront restaurés lors de votre prochaine visite.'
                 : 'Your settings are automatically saved and will be restored on your next visit.'}
