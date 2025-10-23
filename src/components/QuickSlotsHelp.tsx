@@ -87,7 +87,7 @@ export default function QuickSlotsHelp() {
             1
           </div>
 
-          {/* 2 — VIOLET (inactif mais coloré) */}
+          {/* 2 — VIOLET */}
           <div
             className={`rounded-full flex items-center justify-center font-semibold border ${
               isDark ? 'bg-violet-600 text-white border-violet-600' : 'bg-violet-600 text-white border-violet-600'
@@ -98,7 +98,7 @@ export default function QuickSlotsHelp() {
             2
           </div>
 
-          {/* 3 — ÉMERAUDE (inactif mais coloré) */}
+          {/* 3 — ÉMERAUDE */}
           <div
             className={`rounded-full flex items-center justify-center font-semibold border ${
               isDark ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-emerald-600 text-white border-emerald-600'
@@ -113,7 +113,7 @@ export default function QuickSlotsHelp() {
 
       {/* Intro + liste en 18px */}
       <p
-        className={`${isDark ? 'text-gray-100' : 'text-gray-900'}`}
+        className={`${isDark ? 'text-white' : 'text-gray-900'}`}
         style={{ fontSize: `${BODY_SIZE}px`, lineHeight: LINE_HEIGHT, marginBottom: '14px' }}
       >
         {copy.intro}
@@ -123,13 +123,13 @@ export default function QuickSlotsHelp() {
         {copy.items.map((line, i) => (
           <li key={i} className="flex items-start gap-3">
             <span
-              className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+              className={`${isDark ? 'text-white/80' : 'text-gray-500'}`}
               style={{ fontSize: `${BODY_SIZE}px`, lineHeight: LINE_HEIGHT }}
             >
               •
             </span>
             <span
-              className={`${isDark ? 'text-gray-100' : 'text-gray-900'}`}
+              className={`${isDark ? 'text-white' : 'text-gray-900'}`}
               style={{ fontSize: `${BODY_SIZE}px`, lineHeight: LINE_HEIGHT }}
             >
               {line}
@@ -140,4 +140,3 @@ export default function QuickSlotsHelp() {
     </section>
   );
 }
-
