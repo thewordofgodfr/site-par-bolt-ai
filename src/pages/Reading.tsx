@@ -646,34 +646,36 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
-  // Générer un nouveau verset aléatoire (mode Loupe)
-  const pickNewRandom = async () => {
-    try {
-      const all = books;
-      const b = all[Math.floor(Math.random() * all.length)];
-      const chapNum = 1 + Math.floor(Math.random() * b.chapters);
-      const chap = await getChapter(b.name, chapNum, state.settings.language);
-      if (!chap || !chap.verses || chap.verses.length === 0) return;
-      const verseIndex = Math.floor(Math.random() * chap.verses.length);
-      const verseNum = chap.verses[verseIndex].verse;
+  // Générer un nouveau verset aléatoire (vrai 1/31k via JSONL)
+const pickNewRandom = async () => {
+  try {
+    const v = await getRandomVerse(state.settings.language); // { book, chapter, verse, text, ... }
+    if (!v) return;
 
-      saveQuickSlot(0, { book: b.name, chapter: chapNum, verse: verseNum });
-      setSelectedBook(b);
-      setSelectedChapter(chapNum);
-      setSelectedVerses([]);
-      setHighlightedVerse(verseNum);
-      setScrollTargetVerse(verseNum);
-      setTapped(0);
-      setActiveSlot(null);
-      fetchChapter(b, chapNum);
-      saveReadingPosition(b.name, chapNum);
-      setShowBottomRandom(false);
-      try { window.scrollTo({ top: 0 }); } catch {}
-    } catch (e) {
-      console.error('random error', e);
-    }
-  };
+    // mémorise dans le slot loupe (0)
+    saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse });
 
+    // résout le livre puis affiche
+    const b = resolveBook(v.book);
+    if (!b) return;
+
+    setSelectedBook(b);
+    setSelectedChapter(v.chapter);
+    setSelectedVerses([]);
+    setHighlightedVerse(v.verse);      // surbrillance
+    setScrollTargetVerse(v.verse);     // scroll précis
+    setTapped(0);
+    setActiveSlot(null);
+
+    fetchChapter(b, v.chapter);
+    saveReadingPosition(b.name, v.chapter);
+    setShowBottomRandom(false);
+
+    try { window.scrollTo({ top: 0 }); } catch {}
+  } catch (e) {
+    console.error('random error', e);
+  }
+};
   // ====== Rendu
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
