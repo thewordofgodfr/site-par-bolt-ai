@@ -8,3 +8,9 @@
 /* Pour que les ancres et scrollIntoView respectent le header fixed */
 html { scroll-padding-top: var(--nav-h); }
 
+/* 👉 Base typographique : texte par défaut blanc en dark, noir en light */
+@layer base {
+  body { @apply text-gray-900; }
+  .dark body { @apply text-white; } /* renforce la lisibilité globale en mode sombre */
+}
+
