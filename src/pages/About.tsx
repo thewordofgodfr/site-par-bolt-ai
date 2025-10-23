@@ -27,7 +27,7 @@ export default function About() {
                 {rawTitle}
               </h1>
             )}
-            <p className={`text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'} max-w-3xl mx-auto leading-relaxed`}>
+            <p className={`text-xl ${isDark ? 'text-white' : 'text-gray-600'} max-w-3xl mx-auto leading-relaxed`}>
               {t('aboutDescription')}
             </p>
           </div>
@@ -46,10 +46,10 @@ export default function About() {
                     <span className="text-2xl">🇫🇷</span>
                     <div>
                       <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>Français</h3>
-                      <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                      <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-600'} mt-1`}>
                         {t('frenchVersion')}
                       </p>
-                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>
+                      <p className={`text-xs ${isDark ? 'text-white' : 'text-gray-500'} mt-2`}>
                         {state.settings.language === 'fr'
                           ? 'Version de référence pour la Bible en français, traduite par Louis Segond en 1910.'
                           : 'Reference version for the Bible in French, translated by Louis Segond in 1910.'}
@@ -63,10 +63,10 @@ export default function About() {
                     <span className="text-2xl">🇺🇸</span>
                     <div>
                       <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>English</h3>
-                      <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                      <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-600'} mt-1`}>
                         {t('englishVersion')}
                       </p>
-                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>
+                      <p className={`text-xs ${isDark ? 'text-white' : 'text-gray-500'} mt-2`}>
                         {state.settings.language === 'fr'
                           ? 'Version classique de la Bible en anglais, publiée en 1611 et révisée en 1769.'
                           : 'Classic version of the Bible in English, published in 1611 and revised in 1769.'}
@@ -85,20 +85,20 @@ export default function About() {
               </h2>
 
               <div className={`p-6 ${isDark ? 'bg-gray-700' : 'bg-gradient-to-br from-green-50 to-blue-50'} rounded-lg`}>
-                <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} leading-relaxed mb-4`}>
+                <p className={`${isDark ? 'text-white' : 'text-gray-700'} leading-relaxed mb-4`}>
                   {t('randomFeatureDesc')}
                 </p>
 
                 <div className="grid grid-cols-2 gap-4 mt-6">
                   <div className="text-center">
                     <div className={`text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>31,000+</div>
-                    <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <div className={`text-sm ${isDark ? 'text-white' : 'text-gray-600'}`}>
                       {state.settings.language === 'fr' ? 'Versets' : 'Verses'}
                     </div>
                   </div>
                   <div className="text-center">
                     <div className={`text-2xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>66</div>
-                    <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <div className={`text-sm ${isDark ? 'text-white' : 'text-gray-600'}`}>
                       {state.settings.language === 'fr' ? 'Livres' : 'Books'}
                     </div>
                   </div>
@@ -118,7 +118,7 @@ export default function About() {
                 </h3>
               </div>
 
-              <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} mb-4`}>
+              <p className={`${isDark ? 'text-white' : 'text-gray-700'} mb-4`}>
                 {state.settings.language === 'fr'
                   ? 'Approfondissez votre foi avec des études bibliques détaillées.'
                   : 'Deepen your faith with detailed Bible studies.'}
@@ -147,7 +147,7 @@ export default function About() {
                 </h3>
               </div>
 
-              <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} mb-4`}>
+              <p className={`${isDark ? 'text-white' : 'text-gray-700'} mb-4`}>
                 {state.settings.language === 'fr'
                   ? 'Suivez-nous pour des versets et réflexions spirituelles quotidiennes.'
                   : 'Follow us for daily verses and spiritual reflections.'}
@@ -176,7 +176,7 @@ export default function About() {
                 {state.settings.language === 'fr' ? 'Créé avec amour pour répandre la Parole de Dieu' : 'Created with love to spread God\'s Word'}
               </span>
             </div>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-500'}`}>
               {state.settings.language === 'fr'
                 ? 'Toutes les versions bibliques utilisées sont dans le domaine public et la LSG 1910 est légèrement modernisée (termes & grammaire) dans le respect du sens original.'
                 : 'All Bible versions used are in the public domain.'}
