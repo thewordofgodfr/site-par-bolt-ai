@@ -570,7 +570,7 @@ export default function Reading() {
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
-    swipeHandled.current = false;
+        swipeHandled.current = false;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
@@ -758,7 +758,7 @@ export default function Reading() {
                       } else {
                         const theme = SLOT_THEMES[i as SlotKey];
                         cls = filled ? `${theme.solid} ${theme.solidHover}` :
-                          (isDark ? 'bg-gray-800 text-gray-200 border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
+                          (isDark ? 'bg-gray-800 text-white border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
                         if (activeSlot === i) cls += ` ring-2 ring-offset-1 ${theme.ring}`;
                       }
                       const title =
@@ -797,7 +797,7 @@ export default function Reading() {
                         } else {
                           const theme = SLOT_THEMES[i as SlotKey];
                           cls = filled ? `${theme.solid} ${theme.solidHover}` :
-                            (isDark ? 'bg-gray-800 text-gray-200 border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
+                            (isDark ? 'bg-gray-800 text-white border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
                           if (activeSlot === i) cls += ` ring-2 ring-offset-1 ${theme.ring}`;
                         }
                         const title =
@@ -832,8 +832,8 @@ export default function Reading() {
                         onClick={() => handlePrevUnit()}
                         className={`p-1.5 rounded-md transition-all ${
                           selectedBook && selectedChapter <= 1 && books.findIndex(b => b.name === selectedBook.name) === 0
-                            ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                            ? isDark ? 'bg-gray-700 text-white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
                         title={state.settings.language === 'fr' ? 'Chapitre précédent' : 'Previous chapter'}
                       >
@@ -853,15 +853,15 @@ export default function Reading() {
                               ))
                             : null}
                         </select>
-                        <ChevronDown className={`w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-white/80' : 'text-gray-600'}`} />
                       </div>
 
                       <button
                         onClick={() => handleNextUnit()}
                         className={`p-1.5 rounded-md transition-all ${
                           selectedBook && selectedChapter >= selectedBook.chapters && books.findIndex(b => b.name === selectedBook.name) === books.length - 1
-                            ? isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                            ? isDark ? 'bg-gray-700 text-white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
                         title={state.settings.language === 'fr' ? 'Chapitre suivant' : 'Next chapter'}
                       >
@@ -880,7 +880,7 @@ export default function Reading() {
               className="hidden md:block sticky z-40 mb-3"
               style={{ top: `${NAV_H + cmdH + 8}px` }}
             >
-              <div className={`${isDark ? 'bg-gray-800 text-gray-100 border border-gray-700' : 'bg-white text-gray-800 border border-gray-200'} rounded-lg shadow px-4 py-3 flex items-center justify-between`}>
+              <div className={`${isDark ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-800 border border-gray-200'} rounded-lg shadow px-4 py-3 flex items-center justify-between`}>
                 <div className="text-sm">
                   {state.settings.language === 'fr'
                     ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
@@ -903,7 +903,7 @@ export default function Reading() {
                   </button>
                   <button
                     onClick={() => setSelectedVerses([])}
-                    className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}
+                    className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}
                   >
                     {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
                   </button>
@@ -918,7 +918,7 @@ export default function Reading() {
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
-                  <span className={`ml-4 text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{t('loading')}</span>
+                  <span className={`ml-4 text-lg ${isDark ? 'text-white' : 'text-gray-600'}`}>{t('loading')}</span>
                 </div>
               ) : chapter ? (
                 <div>
@@ -948,7 +948,7 @@ export default function Reading() {
                           className={`relative cursor-pointer px-3 pt-6 sm:pt-7 pb-2 sm:pb-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder}`}
                         >
                           {/* Libellé "verset N" en haut-droite */}
-                          <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
                             {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
                             {isSelected && (
                               <Check size={14} className={`inline ml-1 ${isDark ? 'text-blue-300' : 'text-blue-600'}`} />
@@ -957,7 +957,7 @@ export default function Reading() {
 
                           {/* Texte pleine largeur */}
                           <div
-                            className={`${isDark ? 'text-gray-200' : 'text-gray-700'}`}
+                            className={`${isDark ? 'text-white' : 'text-gray-700'}`}
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
                           >
                             {v.text}
@@ -968,7 +968,7 @@ export default function Reading() {
                   </div>
                 </div>
               ) : (
-                <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className={`text-center py-16 ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
                   <p className="text-lg mb-2">{t('selectChapter')}</p>
                   <p className="text-sm">
                     {getBookName(selectedBook)} - {selectedBook.chapters} {t('chapter')}{selectedBook.chapters > 1 ? 's' : ''}
@@ -977,7 +977,7 @@ export default function Reading() {
               )}
             </div>
           ) : (
-            <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-center py-16`}>
+            <div className={`${isDark ? 'text-white/80' : 'text-gray-500'} text-center py-16`}>
               <Book size={48} className="mx-auto mb-4 opacity-50" />
               <p className="text-lg">{t('selectBook')}</p>
             </div>
@@ -992,12 +992,12 @@ export default function Reading() {
                   <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
                     {state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
                   </h3>
-                  <button onClick={() => setShowBookPicker(false)} className={`${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}>
+                  <button onClick={() => setShowBookPicker(false)} className={`${isDark ? 'text-white bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}>
                     {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
                   </button>
                 </div>
 
-                <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('oldTestament')}</h4>
+                <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-white/80' : 'text-gray-600'}`}>{t('oldTestament')}</h4>
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-2 mb-6">
                   {oldTestamentBooks.map(book => (
                     <button
@@ -1006,7 +1006,7 @@ export default function Reading() {
                       className={`w-full inline-block mb-2 break-inside-avoid px-3 py-2 rounded-lg text-sm ${
                         selectedBook?.name === book.name
                           ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
-                          : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'
+                          : isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
                       {getBookName(book)}
@@ -1014,7 +1014,7 @@ export default function Reading() {
                   ))}
                 </div>
 
-                <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('newTestament')}</h4>
+                <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-white/80' : 'text-gray-600'}`}>{t('newTestament')}</h4>
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-2 pb-10">
                   {newTestamentBooks.map(book => (
                     <button
@@ -1023,7 +1023,7 @@ export default function Reading() {
                       className={`w-full inline-block mb-2 break-inside-avoid px-3 py-2 rounded-lg text-sm ${
                         selectedBook?.name === book.name
                           ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
-                          : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'
+                          : isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
                       {getBookName(book)}
@@ -1045,7 +1045,7 @@ export default function Reading() {
                   </h3>
                   <button
                     onClick={() => setShowChapterPicker(false)}
-                    className={`${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}
+                    className={`${isDark ? 'text-white bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}
                   >
                     {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
                   </button>
@@ -1056,7 +1056,7 @@ export default function Reading() {
                     const active =
                       num === selectedChapter
                         ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800')
-                        : (isDark ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200');
+                        : (isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200');
 
                     return (
                       <button
@@ -1077,16 +1077,16 @@ export default function Reading() {
           {/* Barre flottante (mobile) */}
           {selectedVerses.length > 0 && (
             <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-              <div className={`${isDark ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
+              <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
                 <button onClick={copySelection} className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-600 text-white">
                   <CopyIcon size={16} className="mr-1" />
                   {state.settings.language === 'fr' ? 'Copier' : 'Copy'}
                 </button>
-                <button onClick={shareSelection} className={`${isDark ? 'bg-gray-700 text-gray-100' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full inline-flex items-center`}>
+                <button onClick={shareSelection} className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full inline-flex items-center`}>
                   <ShareIcon size={16} className="mr-1" />
                   {state.settings.language === 'fr' ? 'Partager' : 'Share'}
                 </button>
-                <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-gray-100' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full`}>
+                <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full`}>
                   {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
                 </button>
               </div>
@@ -1132,4 +1132,3 @@ export default function Reading() {
     </div>
   );
 }
-
