@@ -95,7 +95,7 @@ export default function Home() {
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
-                <span className={`ml-4 text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <span className={`ml-4 text-lg ${isDark ? 'text-white' : 'text-gray-600'}`}>
                   {t('loading')}
                 </span>
               </div>
@@ -103,7 +103,7 @@ export default function Home() {
               <div className="text-center">
                 <blockquote
                   onClick={handleVerseClick}
-                  className={`text-lg md:text-xl leading-relaxed mb-8 italic cursor-pointer transition-all duration-200 hover:scale-105 ${isDark ? 'text-gray-200 hover:text-blue-300' : 'text-gray-700 hover:text-blue-600'}`}
+                  className={`text-lg md:text-xl leading-relaxed mb-8 italic cursor-pointer transition-all duration-200 hover:scale-105 ${isDark ? 'text-white hover:text-blue-300' : 'text-gray-700 hover:text-blue-600'}`}
                   style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.8' }}
                 >
                   “{verse.text}”
@@ -116,7 +116,7 @@ export default function Home() {
                 </cite>
               </div>
             ) : (
-              <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className={`text-center py-16 ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
                 {t('error')}
               </div>
             )}
@@ -146,7 +146,7 @@ export default function Home() {
               aria-label={lang === 'fr' ? 'Ouvrir Jérémie 23' : 'Open Jeremiah 23'}
               title={lang === 'fr' ? 'Ouvrir Jérémie 23' : 'Open Jeremiah 23'}
             >
-              <p className={`italic hover:underline ${isDark ? 'text-gray-200' : 'text-gray-700'} text-base md:text-lg`}>
+              <p className={`italic hover:underline ${isDark ? 'text-white' : 'text-gray-700'} text-base md:text-lg`}>
                 {lang === 'fr'
                   ? '« Ma parole n’est-elle pas comme un feu, dit l’Éternel, et comme un marteau qui brise le roc ? » Jérémie 23:29'
                   : '“Is not my word like as a fire? saith the LORD; and like a hammer that breaketh the rock in pieces?” Jeremiah 23:29'}
@@ -158,3 +158,4 @@ export default function Home() {
     </div>
   );
 }
+
