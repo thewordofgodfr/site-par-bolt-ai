@@ -5,6 +5,10 @@
 /* Hauteur du header (garde alignée avec le spacer) */
 :root { --nav-h: 64px; }
 
+/* optionnel : rend le fond “dark” un peu plus doux quand .soft-dark est présent */
+.soft-dark .bg-gray-900 { background-color: #1f2937 !important; } /* gray-800 */
+.soft-dark .bg-gray-800 { background-color: #243041 !important; } /* un chouïa plus clair */
+
 /* Pour que les ancres et scrollIntoView respectent le header fixed */
 html { scroll-padding-top: var(--nav-h); }
 
