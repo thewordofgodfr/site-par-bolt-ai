@@ -2,19 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hauteur du header (garde alignée avec le spacer) */
+/* Hauteur du header pour le scroll-padding */
 :root { --nav-h: 64px; }
-
-/* optionnel : rend le fond “dark” un peu plus doux quand .soft-dark est présent */
-.soft-dark .bg-gray-900 { background-color: #1f2937 !important; } /* gray-800 */
-.soft-dark .bg-gray-800 { background-color: #243041 !important; } /* un chouïa plus clair */
-
-/* Pour que les ancres et scrollIntoView respectent le header fixed */
 html { scroll-padding-top: var(--nav-h); }
 
-/* 👉 Base typographique : texte par défaut blanc en dark, noir en light */
+/* Base typographique : noir en clair, blanc en sombre */
 @layer base {
   body { @apply text-gray-900; }
-  .dark body { @apply text-white; } /* renforce la lisibilité globale en mode sombre */
+  .dark body { @apply text-white; }
 }
+
+/* ===== Helpers optionnels si tu veux garder ces classes ===== */
+.soft-dark .bg-gray-900 { background-color: #1f2937 !important; } /* gray-800 */
+.soft-dark .bg-gray-800 { background-color: #243041 !important; } /* + clair */
 
