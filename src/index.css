@@ -24,6 +24,43 @@ html[data-theme="light"] body {
   color: #111827 !important; /* gray-900 */
 }
 
+/* ==========================================================
+   📌 OS en sombre + APP en clair  => texte "blanc blanc"
+   (on NE change PAS les fonds ; juste la couleur du texte)
+   ========================================================== */
+@media (prefers-color-scheme: dark) {
+  /* Couleur de base */
+  html[data-theme="light"]:not(.theme-dark-blue) body {
+    color: #ffffff !important;
+  }
+
+  /* Surclasse les utilitaires Tailwind de texte souvent utilisés */
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-50,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-100,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-200,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-300,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-400,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-500,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-600,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-700,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-800,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-gray-900,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-black,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-white,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-white\/90,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-white\/80,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-white\/70,
+  html[data-theme="light"]:not(.theme-dark-blue) .text-white\/60 {
+    color: #ffffff !important;
+  }
+
+  /* Placeholders (inputs) bien blancs aussi */
+  html[data-theme="light"]:not(.theme-dark-blue) ::placeholder {
+    color: #ffffff !important;
+    opacity: 0.9 !important;
+  }
+}
+
 /* ======= PALETTE SOMBRE BLEU (référence unique pour tout “dark”) ======= */
 html.theme-dark-blue {
   --tw-db-bg: #0f172a;         /* slate-900 */
@@ -58,7 +95,7 @@ html.theme-dark-blue .border-gray-500,
 html.theme-dark-blue .border-gray-600,
 html.theme-dark-blue .border-gray-700 { border-color: var(--tw-db-border) !important; }
 
-/* Texte => toujours blanc franc en sombre (évite “pas blanc-blanc”) */
+/* Texte bien blanc en sombre */
 html.theme-dark-blue .text-gray-100,
 html.theme-dark-blue .text-gray-200,
 html.theme-dark-blue .text-gray-300,
