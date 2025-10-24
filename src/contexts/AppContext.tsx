@@ -65,7 +65,7 @@ const getInitialLanguage = (): Language => {
 
 const initialState: AppState = {
   settings: {
-    theme: 'dark', // <- DÉFAUT EN SOMBRE
+    theme: 'dark', // DÉFAUT : sombre
     fontSize: 16,
     language: getInitialLanguage(),
   },
@@ -76,22 +76,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_THEME':
       return { ...state, settings: { ...state.settings, theme: action.payload } };
-
     case 'SET_FONT_SIZE':
       return { ...state, settings: { ...state.settings, fontSize: action.payload } };
-
     case 'SET_LANGUAGE':
       return { ...state, settings: { ...state.settings, language: action.payload } };
-
     case 'SET_PAGE':
       return { ...state, currentPage: action.payload };
-
     case 'LOAD_SETTINGS':
       return { ...state, settings: action.payload };
-
     case 'SET_READING_CONTEXT':
       return { ...state, readingContext: action.payload };
-
     case 'SAVE_READING_POSITION':
       return {
         ...state,
@@ -104,10 +98,21 @@ function appReducer(state: AppState, action: AppAction): AppState {
           },
         },
       };
-
     default:
       return state;
   }
+}
+
+/** util pour créer/récupérer une meta */
+function ensureMeta(name: string, defaultContent = ''): HTMLMetaElement {
+  let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('name', name);
+    if (defaultContent) el.setAttribute('content', defaultContent);
+    document.head.appendChild(el);
+  }
+  return el;
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -145,32 +150,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.settings]);
 
   /**
-   * 👉 Appliquer le thème au document :
-   * - classe Tailwind 'dark'
-   * - color-scheme (empêche le "force dark" Android/WebView quand on est en light)
-   * - fond body + meta theme-color pour un contraste parfait
+   * 👉 Application du thème + compat avec “force dark” Android/WebView
+   * Règles cibles (tes 4 points) :
+   * 1) tel sombre + app sombre → sombre adouci (fond gris-800)
+   * 2) tel sombre + app clair  → VRAI clair (pas d’inversion)
+   * 3) tel clair  + app clair  → clair
+   * 4) tel clair  + app sombre → sombre adouci (comme 1)
    */
   useEffect(() => {
     try {
       const root = document.documentElement;
-      const isDark = state.settings.theme === 'dark';
+      const appDark = state.settings.theme === 'dark';
+      const systemPrefersDark =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-      // Classe Tailwind
-      if (isDark) root.classList.add('dark');
+      // Palette “soft dark”
+      const SOFT_DARK_BG = '#1f2937'; // Tailwind gray-800 (plus lisible que #111827)
+      const SOFT_DARK_TEXT = '#ffffff';
+      const LIGHT_BG = '#ffffff';
+      const LIGHT_TEXT = '#111827';
+
+      // Tailwind “dark” (contrôle des variantes)
+      if (appDark) root.classList.add('dark');
       else root.classList.remove('dark');
 
-      // Color scheme explicite (désactive le "force dark" quand light)
-      (root.style as any).colorScheme = state.settings.theme; // 'dark' | 'light'
+      // Classe helper si tu veux cibler soft-dark en CSS (optionnelle)
+      root.classList.toggle('soft-dark', appDark);
 
-      // Fond global (évite les zones inversées)
-      document.body.style.backgroundColor = isDark ? '#111827' /* gray-900 */ : '#ffffff';
+      // Désactive l’auto-inversion quand l’app veut être claire (cas 2 & 3)
+      // et annonce un vrai dark quand l’app est sombre (cas 1 & 4).
+      const metaTheme = ensureMeta('theme-color');
+      const metaColorScheme = ensureMeta('color-scheme');
+      const metaSupportedSchemes = ensureMeta('supported-color-schemes');
 
-      // Teinte la barre système
-      const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
-      if (meta) meta.content = isDark ? '#111827' : '#ffffff';
+      if (appDark) {
+        // Cas 1 & 4 : sombre adouci
+        (root.style as any).colorScheme = 'dark';
+        document.body.style.backgroundColor = SOFT_DARK_BG;
+        document.body.style.color = SOFT_DARK_TEXT;
+        metaTheme.content = SOFT_DARK_BG;
+        metaColorScheme.content = 'dark';
+        metaSupportedSchemes.content = 'dark';
+      } else {
+        // Cas 2 & 3 : forcer clair même si l’OS est sombre
+        (root.style as any).colorScheme = 'light';
+        document.body.style.backgroundColor = LIGHT_BG;
+        document.body.style.color = LIGHT_TEXT;
+        metaTheme.content = LIGHT_BG;
+        metaColorScheme.content = 'light';
+        metaSupportedSchemes.content = 'light';
+      }
 
-      // Optionnel : expose le thème
-      root.setAttribute('data-theme', state.settings.theme);
+      // Expose le thème (debug/diagnostic)
+      root.setAttribute('data-theme', appDark ? 'dark' : 'light');
+
+      // Si les préférences système changent (rarement utile ici), on peut réagir :
+      // on n’écrase PAS le choix utilisateur, mais on peut re-teinter la barre.
+      const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+      const onChange = () => {
+        // On re-pousse juste la bonne couleur de barre selon le choix utilisateur.
+        metaTheme.content = appDark ? SOFT_DARK_BG : LIGHT_BG;
+      };
+      media?.addEventListener?.('change', onChange);
+      return () => media?.removeEventListener?.('change', onChange);
     } catch {
       /* no-op */
     }
