@@ -1,3 +1,4 @@
+// src/contexts/AppContext.tsx
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { AppSettings, Language, Theme } from '../types/bible';
 
@@ -139,25 +140,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.settings]);
 
   /**
-   * 👉 Appliquer le thème choisi (sans tenir compte de l’OS) :
-   * - dark  => classes .dark + .theme-dark-blue + meta color-scheme dark
-   * - light => enlever .dark/.theme-dark-blue, forcer color-scheme light (vrai clair)
+   * 👉 Appliquer le thème choisi + gérer le cas “téléphone sombre + appli claire”
+   * Règle:
+   *   - Si app = dark  -> dark + palette bleue
+   *   - Si app = light ET OS = dark -> on active quand même la palette sombre bleue
+   *       → évite l’auto-dark grisâtre, texte blanc franc (index.css fait le reste)
+   *   - Si app = light ET OS = light -> clair normal
    */
   useEffect(() => {
     try {
       const root = document.documentElement;
       const appDark = state.settings.theme === 'dark';
+      const prefersDark = !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
 
-      root.classList.toggle('dark', appDark);
-      root.classList.toggle('theme-dark-blue', appDark);
-      root.setAttribute('data-theme', appDark ? 'dark' : 'light');
+      const useDarkSkin = appDark || (!appDark && prefersDark);
+
+      // classes globales
+      root.classList.toggle('dark', useDarkSkin);
+      root.classList.toggle('theme-dark-blue', useDarkSkin);
+      root.setAttribute('data-theme', useDarkSkin ? 'dark' : 'light');
 
       // Méta (barres navigateur)
       const metaTheme = ensureMeta('theme-color');
       const metaColorScheme = ensureMeta('color-scheme');
       const metaSupportedSchemes = ensureMeta('supported-color-schemes');
 
-      if (appDark) {
+      if (useDarkSkin) {
         (root.style as any).colorScheme = 'dark';
         document.body.style.backgroundColor = '#0f172a'; // slate-900
         document.body.style.color = '#ffffff';
@@ -173,6 +181,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (metaColorScheme) metaColorScheme.content = 'light';
         if (metaSupportedSchemes) metaSupportedSchemes.content = 'light';
       }
+
+      // Si l’utilisateur change le thème système à chaud, on ré-applique
+      const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+      const onChange = () => {
+        const nowPrefersDark = !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+        const nowUseDark = state.settings.theme === 'dark' || (state.settings.theme === 'light' && nowPrefersDark);
+        root.classList.toggle('dark', nowUseDark);
+        root.classList.toggle('theme-dark-blue', nowUseDark);
+        root.setAttribute('data-theme', nowUseDark ? 'dark' : 'light');
+        if (metaTheme) metaTheme.content = nowUseDark ? '#0f172a' : '#ffffff';
+        (root.style as any).colorScheme = nowUseDark ? 'dark' : 'light';
+        document.body.style.backgroundColor = nowUseDark ? '#0f172a' : '#ffffff';
+        document.body.style.color = nowUseDark ? '#ffffff' : '#111827';
+      };
+      media?.addEventListener?.('change', onChange);
+      return () => media?.removeEventListener?.('change', onChange);
     } catch {}
   }, [state.settings.theme]);
 
