@@ -10,7 +10,11 @@
     <title>TheWord.fr — Bible en ligne (LSG 1910 & KJV)</title>
     <meta name="description" content="The Word : lecture de la Bible en français (LSG 1910) et en anglais (KJV). Recherche rapide, verset aléatoire, lecture chapitre par chapitre. Gratuit et sans inscription.">
     <link rel="canonical" href="https://www.theword.fr/"/>
-    <meta name="theme-color" content="#2196f3"/>
+
+    <!-- Metas pour l'UI système (valeur mise à jour par le script ci-dessous) -->
+    <meta name="theme-color" content="#0f172a"/>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
 
     <!-- Favicons / PWA -->
     <link rel="icon" href="/favicon.ico" sizes="any">
@@ -27,7 +31,51 @@
     <!-- PWA (optionnel) -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- ===== Boot thème ultra-tôt (avant React & Tailwind) ===== -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('bibleApp_settings');
+          var theme = 'dark'; // défaut : sombre
+          if (saved) {
+            try { theme = JSON.parse(saved).theme || 'dark'; } catch (e) {}
+          }
+
+          var root = document.documentElement;
+
+          if (theme === 'dark') {
+            // Appli sombre -> palette bleu foncé (même rendu quel que soit le tel)
+            root.classList.add('dark','theme-dark-blue');
+            root.setAttribute('data-theme','dark');
+            root.style.colorScheme = 'dark';
+            // fond immédiat pour éviter tout flash
+            root.style.setProperty('--force-body-bg', '#0f172a'); // slate-900
+            // teinte de la barre système
+            var metaTC = document.querySelector('meta[name="theme-color"]');
+            if (metaTC) metaTC.content = '#0f172a';
+            var metaCS = document.querySelector('meta[name="color-scheme"]');
+            if (metaCS) metaCS.content = 'dark';
+          } else {
+            // Appli claire -> VRAI clair même si le téléphone est en sombre
+            root.classList.remove('dark','theme-dark-blue');
+            root.setAttribute('data-theme','light');
+            root.style.colorScheme = 'light';
+            root.style.forcedColorAdjust = 'none';
+            root.style.setProperty('--force-body-bg', '#ffffff');
+            var metaTC2 = document.querySelector('meta[name="theme-color"]');
+            if (metaTC2) metaTC2.content = '#ffffff';
+            var metaCS2 = document.querySelector('meta[name="color-scheme"]');
+            if (metaCS2) metaCS2.content = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <!-- évite le flash de mauvais fond avant le CSS -->
+    <style> body { background: var(--force-body-bg, #0f172a); } </style>
+    <!-- ===== FIN boot thème ===== -->
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
