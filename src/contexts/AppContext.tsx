@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { AppSettings, Language, Theme } from '../types/bible';
 
-/** Pages supportées dans l’app (tu peux en ajouter ici si besoin) */
+/** Pages supportées dans l’app */
 type Page = 'home' | 'reading' | 'settings' | 'about' | 'search';
 
 interface ReadingContext {
@@ -30,11 +30,8 @@ interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   updateSettings: (settings: Partial<AppSettings>) => void;
-  /** Navigue vers Lecture avec un contexte précis (livre, chapitre, verset optionnel) */
   navigateToVerse: (book: string, chapter: number, verse?: number) => void;
-  /** Sauvegarde la position de lecture (utilisé pour la reprise) */
   saveReadingPosition: (book: string, chapter: number) => void;
-  /** Naviguer vers une page donnée (ex: 'search' pour un écran de recherche dédié) */
   setPage: (page: Page) => void;
 }
 
@@ -55,7 +52,6 @@ const getInitialLanguage = (): Language => {
   } catch {
     /* no-op */
   }
-
   if (typeof navigator !== 'undefined') {
     const browserLang = navigator.language?.toLowerCase() || '';
     if (browserLang.startsWith('fr')) return 'fr';
@@ -65,7 +61,7 @@ const getInitialLanguage = (): Language => {
 
 const initialState: AppState = {
   settings: {
-    theme: 'dark', // DÉFAUT : sombre
+    theme: 'dark', // DÉFAUT : sombre (bleu foncé adouci)
     fontSize: 16,
     language: getInitialLanguage(),
   },
@@ -104,7 +100,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
 }
 
 /** util pour créer/récupérer une meta */
-function ensureMeta(name: string, defaultContent = ''): HTMLMetaElement {
+function ensureMeta(name: string, defaultContent = ''): HTMLMetaElement | null {
+  if (typeof document === 'undefined') return null;
   let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
   if (!el) {
     el = document.createElement('meta');
@@ -115,8 +112,79 @@ function ensureMeta(name: string, defaultContent = ''): HTMLMetaElement {
   return el;
 }
 
+/** injecte un patch CSS global pour le sombre “bleu foncé” + forcer le clair */
+function ensureThemeStylePatch() {
+  if (typeof document === 'undefined') return;
+  const id = 'tw-theme-patch';
+  if (document.getElementById(id)) return;
+
+  const css = `
+/* ====== LIGHT ENFORCER ======
+   Empêche l’auto-inversion (Android WebView/Chrome) quand l’app est en clair.
+*/
+html[data-theme="light"] { 
+  color-scheme: light !important;
+  forced-color-adjust: none !important; /* évite certains modes forcés */
+}
+html[data-theme="light"], html[data-theme="light"] body {
+  background-color: #ffffff !important;
+  color: #111827 !important; /* gray-900 */
+}
+
+/* ====== DARK BLUE PALETTE ====== */
+html.theme-dark-blue {
+  --tw-db-bg: #0f172a;         /* slate-900 : bleu foncé */
+  --tw-db-surface: #111c2e;    /* surface principale */
+  --tw-db-surface-2: #15233b;  /* surface secondaire */
+  --tw-db-border: rgba(255,255,255,.12);
+  --tw-db-text: #ffffff;       /* blanc “blanc” */
+  --tw-db-subtext: rgba(255,255,255,.86);
+}
+
+/* Fond + texte par défaut */
+html.theme-dark-blue, html.theme-dark-blue body {
+  background-color: var(--tw-db-bg) !important;
+  color: var(--tw-db-text) !important;
+}
+
+/* Override des utilitaires Tailwind fréquents utilisés dans les pages
+   → on les remappe vers la palette bleu foncé sans toucher le code des pages. */
+html.theme-dark-blue .bg-gray-900 { background-color: var(--tw-db-bg) !important; }
+html.theme-dark-blue .bg-gray-800 { background-color: var(--tw-db-surface) !important; }
+html.theme-dark-blue .bg-gray-700 { background-color: var(--tw-db-surface-2) !important; }
+html.theme-dark-blue .border-gray-700 { border-color: var(--tw-db-border) !important; }
+html.theme-dark-blue .border-gray-600 { border-color: var(--tw-db-border) !important; }
+
+/* Texte bien blanc dans tout le mode sombre (même si les pages utilisent des text-gray-xxx) */
+html.theme-dark-blue .text-gray-100,
+html.theme-dark-blue .text-gray-200,
+html.theme-dark-blue .text-gray-300,
+html.theme-dark-blue .text-gray-400,
+html.theme-dark-blue .text-gray-500 { color: var(--tw-db-text) !important; }
+
+/* Les utilitaires avec opacité (text-white/80, etc.) */
+html.theme-dark-blue .text-white\\/80,
+html.theme-dark-blue .text-white\\/70,
+html.theme-dark-blue .text-white\\/60 { color: var(--tw-db-subtext) !important; }
+
+/* Petites surfaces translucides souvent utilisées pour les barres collantes */
+html.theme-dark-blue .bg-gray-800\\/95 { background-color: color-mix(in srgb, var(--tw-db-surface) 95%, transparent) !important; }
+html.theme-dark-blue .bg-white\\/95.dark\\:bg-gray-800\\/95 { background-color: color-mix(in srgb, var(--tw-db-surface) 95%, transparent) !important; }
+`;
+
+  const style = document.createElement('style');
+  style.id = id;
+  style.appendChild(document.createTextNode(css));
+  document.head.appendChild(style);
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  /** Charger patch CSS une fois */
+  useEffect(() => {
+    try { ensureThemeStylePatch(); } catch {}
+  }, []);
 
   /** Chargement des préférences depuis localStorage */
   useEffect(() => {
@@ -150,71 +218,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.settings]);
 
   /**
-   * 👉 Application du thème + compat avec “force dark” Android/WebView
-   * Règles cibles (tes 4 points) :
-   * 1) tel sombre + app sombre → sombre adouci (fond gris-800)
-   * 2) tel sombre + app clair  → VRAI clair (pas d’inversion)
-   * 3) tel clair  + app clair  → clair
-   * 4) tel clair  + app sombre → sombre adouci (comme 1)
+   * 👉 Application du thème + compat cas 1–4 demandés
+   * 1) tel clair  + app sombre → sombre “bleu foncé” (fonds plus sombres, texte blanc)
+   * 2) tel clair  + app clair  → clair
+   * 3) tel sombre + app clair  → forcer le VRAI clair (désactive auto-inversion) ; si l’UA insiste, nos couleurs restent explicites
+   * 4) tel sombre + app sombre → sombre “bleu foncé” mais un peu plus doux qu’un noir pur
    */
   useEffect(() => {
     try {
       const root = document.documentElement;
       const appDark = state.settings.theme === 'dark';
-      const systemPrefersDark =
-        typeof window !== 'undefined' &&
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-      // Palette “soft dark”
-      const SOFT_DARK_BG = '#1f2937'; // Tailwind gray-800 (plus lisible que #111827)
-      const SOFT_DARK_TEXT = '#ffffff';
-      const LIGHT_BG = '#ffffff';
-      const LIGHT_TEXT = '#111827';
+      // Tailwind "dark:" variants
+      root.classList.toggle('dark', appDark);
 
-      // Tailwind “dark” (contrôle des variantes)
-      if (appDark) root.classList.add('dark');
-      else root.classList.remove('dark');
+      // Classe palette bleu foncé (notre skin sombre)
+      root.classList.toggle('theme-dark-blue', appDark);
 
-      // Classe helper si tu veux cibler soft-dark en CSS (optionnelle)
-      root.classList.toggle('soft-dark', appDark);
+      // Expose le thème (sert aussi au patch CSS)
+      root.setAttribute('data-theme', appDark ? 'dark' : 'light');
 
-      // Désactive l’auto-inversion quand l’app veut être claire (cas 2 & 3)
-      // et annonce un vrai dark quand l’app est sombre (cas 1 & 4).
+      // Méta & couleurs systèmes (barres navigateur, etc.)
       const metaTheme = ensureMeta('theme-color');
       const metaColorScheme = ensureMeta('color-scheme');
       const metaSupportedSchemes = ensureMeta('supported-color-schemes');
 
       if (appDark) {
-        // Cas 1 & 4 : sombre adouci
+        // Sombre bleu foncé
         (root.style as any).colorScheme = 'dark';
-        document.body.style.backgroundColor = SOFT_DARK_BG;
-        document.body.style.color = SOFT_DARK_TEXT;
-        metaTheme.content = SOFT_DARK_BG;
-        metaColorScheme.content = 'dark';
-        metaSupportedSchemes.content = 'dark';
+        document.body.style.backgroundColor = '#0f172a'; // slate-900
+        document.body.style.color = '#ffffff';
+        if (metaTheme) metaTheme.content = '#0f172a';
+        if (metaColorScheme) metaColorScheme.content = 'dark';
+        if (metaSupportedSchemes) metaSupportedSchemes.content = 'dark';
       } else {
-        // Cas 2 & 3 : forcer clair même si l’OS est sombre
+        // Clair (vraiment clair même si le tel est en sombre)
         (root.style as any).colorScheme = 'light';
-        document.body.style.backgroundColor = LIGHT_BG;
-        document.body.style.color = LIGHT_TEXT;
-        metaTheme.content = LIGHT_BG;
-        metaColorScheme.content = 'light';
-        metaSupportedSchemes.content = 'light';
+        (root.style as any).forcedColorAdjust = 'none'; // aide à neutraliser certains modes forcés
+        document.body.style.backgroundColor = '#ffffff';
+        document.body.style.color = '#111827';
+        if (metaTheme) metaTheme.content = '#ffffff';
+        if (metaColorScheme) metaColorScheme.content = 'light';
+        if (metaSupportedSchemes) metaSupportedSchemes.content = 'light';
       }
-
-      // Expose le thème (debug/diagnostic)
-      root.setAttribute('data-theme', appDark ? 'dark' : 'light');
-
-      // Si les préférences système changent (rarement utile ici), on peut réagir :
-      // on n’écrase PAS le choix utilisateur, mais on peut re-teinter la barre.
-      const media = window.matchMedia?.('(prefers-color-scheme: dark)');
-      const onChange = () => {
-        // On re-pousse juste la bonne couleur de barre selon le choix utilisateur.
-        metaTheme.content = appDark ? SOFT_DARK_BG : LIGHT_BG;
-      };
-      media?.addEventListener?.('change', onChange);
-      return () => media?.removeEventListener?.('change', onChange);
     } catch {
       /* no-op */
     }
@@ -239,7 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  /** Navigue vers lecture avec un contexte précis (utilisé pour “verset aléatoire”, résultats de recherche, etc.) */
+  /** Navigue vers Lecture (utilisé pour “verset aléatoire”, résultats de recherche, etc.) */
   const navigateToVerse = (book: string, chapter: number, verse?: number) => {
     dispatch({ type: 'SET_READING_CONTEXT', payload: { book, chapter, verse } });
     dispatch({ type: 'SET_PAGE', payload: 'reading' });
@@ -250,7 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SAVE_READING_POSITION', payload: { book, chapter } });
   };
 
-  /** Navigation générique (utile pour ouvrir une future page “search”) */
+  /** Navigation générique */
   const setPage = (page: Page) => {
     dispatch({ type: 'SET_PAGE', payload: page });
   };
