@@ -65,7 +65,7 @@ const getInitialLanguage = (): Language => {
 
 const initialState: AppState = {
   settings: {
-    theme: 'light',
+    theme: 'dark', // <- DÉFAUT EN SOMBRE
     fontSize: 16,
     language: getInitialLanguage(),
   },
@@ -144,13 +144,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.settings]);
 
-  /** 👉 Appliquer la classe "dark" sur <html> pour activer les styles dark globalement */
+  /**
+   * 👉 Appliquer le thème au document :
+   * - classe Tailwind 'dark'
+   * - color-scheme (empêche le "force dark" Android/WebView quand on est en light)
+   * - fond body + meta theme-color pour un contraste parfait
+   */
   useEffect(() => {
     try {
       const root = document.documentElement;
-      if (state.settings.theme === 'dark') root.classList.add('dark');
+      const isDark = state.settings.theme === 'dark';
+
+      // Classe Tailwind
+      if (isDark) root.classList.add('dark');
       else root.classList.remove('dark');
-    } catch {}
+
+      // Color scheme explicite (désactive le "force dark" quand light)
+      (root.style as any).colorScheme = state.settings.theme; // 'dark' | 'light'
+
+      // Fond global (évite les zones inversées)
+      document.body.style.backgroundColor = isDark ? '#111827' /* gray-900 */ : '#ffffff';
+
+      // Teinte la barre système
+      const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+      if (meta) meta.content = isDark ? '#111827' : '#ffffff';
+
+      // Optionnel : expose le thème
+      root.setAttribute('data-theme', state.settings.theme);
+    } catch {
+      /* no-op */
+    }
   }, [state.settings.theme]);
 
   /** Mise à jour partielle des settings (thème, taille police, langue) */
@@ -204,3 +227,4 @@ export function useApp() {
   }
   return context;
 }
+
