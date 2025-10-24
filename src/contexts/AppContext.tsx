@@ -49,9 +49,7 @@ const getInitialLanguage = (): Language => {
       ? localStorage.getItem(STORAGE_KEYS.language)
       : null) as Language | null;
     if (savedLanguage) return savedLanguage;
-  } catch {
-    /* no-op */
-  }
+  } catch {}
   if (typeof navigator !== 'undefined') {
     const browserLang = navigator.language?.toLowerCase() || '';
     if (browserLang.startsWith('fr')) return 'fr';
@@ -61,7 +59,8 @@ const getInitialLanguage = (): Language => {
 
 const initialState: AppState = {
   settings: {
-    theme: 'dark', // DÉFAUT : sombre (bleu foncé adouci)
+    // ✅ DÉFAUT sombre (ta référence)
+    theme: 'dark',
     fontSize: 16,
     language: getInitialLanguage(),
   },
@@ -112,33 +111,36 @@ function ensureMeta(name: string, defaultContent = ''): HTMLMetaElement | null {
   return el;
 }
 
-/** injecte un patch CSS global pour le sombre “bleu foncé” + forcer le clair */
+/** injecte (une seule fois) la feuille de style globale des thèmes */
 function ensureThemeStylePatch() {
   if (typeof document === 'undefined') return;
   const id = 'tw-theme-patch';
   if (document.getElementById(id)) return;
 
   const css = `
-/* ====== LIGHT ENFORCER ======
-   Empêche l’auto-inversion (Android WebView/Chrome) quand l’app est en clair.
+/* ======= ENFORCER : VRAI MODE CLAIR =======
+   - Neutralise les inversions "auto dark" (WebView/Chrome) lorsqu'on choisit le clair.
+   - Garde des couleurs nettes (fond blanc, texte gris-900).
 */
-html[data-theme="light"] { 
+html[data-theme="light"] {
   color-scheme: light !important;
-  forced-color-adjust: none !important; /* évite certains modes forcés */
+  forced-color-adjust: none !important;
+  filter: none !important;
+  background-color: #ffffff !important;
 }
-html[data-theme="light"], html[data-theme="light"] body {
+html[data-theme="light"] body {
   background-color: #ffffff !important;
   color: #111827 !important; /* gray-900 */
 }
 
-/* ====== DARK BLUE PALETTE ====== */
+/* ======= PALETTE SOMBRE BLEU (référence) ======= */
 html.theme-dark-blue {
   --tw-db-bg: #0f172a;         /* slate-900 : bleu foncé */
-  --tw-db-surface: #111c2e;    /* surface principale */
+  --tw-db-surface: #111c2e;    /* surface principale (légèrement plus claire que bg) */
   --tw-db-surface-2: #15233b;  /* surface secondaire */
-  --tw-db-border: rgba(255,255,255,.12);
-  --tw-db-text: #ffffff;       /* blanc “blanc” */
-  --tw-db-subtext: rgba(255,255,255,.86);
+  --tw-db-border: rgba(255,255,255,.14);
+  --tw-db-text: #ffffff;       /* blanc fort */
+  --tw-db-subtext: rgba(255,255,255,.92);
 }
 
 /* Fond + texte par défaut */
@@ -147,29 +149,51 @@ html.theme-dark-blue, html.theme-dark-blue body {
   color: var(--tw-db-text) !important;
 }
 
-/* Override des utilitaires Tailwind fréquents utilisés dans les pages
-   → on les remappe vers la palette bleu foncé sans toucher le code des pages. */
+/* ======= Overrides Tailwind fréquents -> palette sombre bleu ======= */
+
+/* Backgrounds sombres */
 html.theme-dark-blue .bg-gray-900 { background-color: var(--tw-db-bg) !important; }
 html.theme-dark-blue .bg-gray-800 { background-color: var(--tw-db-surface) !important; }
 html.theme-dark-blue .bg-gray-700 { background-color: var(--tw-db-surface-2) !important; }
-html.theme-dark-blue .border-gray-700 { border-color: var(--tw-db-border) !important; }
-html.theme-dark-blue .border-gray-600 { border-color: var(--tw-db-border) !important; }
+/* fonds clairs utilisés en light → remappés à des surfaces sombres */
+html.theme-dark-blue .bg-gray-50,
+html.theme-dark-blue .bg-gray-100,
+html.theme-dark-blue .bg-white,
+html.theme-dark-blue .bg-white\\/95 { background-color: var(--tw-db-surface) !important; }
 
-/* Texte bien blanc dans tout le mode sombre (même si les pages utilisent des text-gray-xxx) */
+/* Bordures */
+html.theme-dark-blue .border-gray-200,
+html.theme-dark-blue .border-gray-300,
+html.theme-dark-blue .border-gray-400,
+html.theme-dark-blue .border-gray-500,
+html.theme-dark-blue .border-gray-600,
+html.theme-dark-blue .border-gray-700 { border-color: var(--tw-db-border) !important; }
+
+/* Texte : toujours “blanc-blanc” en sombre */
 html.theme-dark-blue .text-gray-100,
 html.theme-dark-blue .text-gray-200,
 html.theme-dark-blue .text-gray-300,
 html.theme-dark-blue .text-gray-400,
-html.theme-dark-blue .text-gray-500 { color: var(--tw-db-text) !important; }
+html.theme-dark-blue .text-gray-500,
+html.theme-dark-blue .text-gray-600,
+html.theme-dark-blue .text-gray-700,
+html.theme-dark-blue .text-gray-800,
+html.theme-dark-blue .text-gray-900 { color: var(--tw-db-text) !important; }
 
-/* Les utilitaires avec opacité (text-white/80, etc.) */
+html.theme-dark-blue .text-white,
+html.theme-dark-blue .text-white\\/90,
 html.theme-dark-blue .text-white\\/80,
 html.theme-dark-blue .text-white\\/70,
-html.theme-dark-blue .text-white\\/60 { color: var(--tw-db-subtext) !important; }
+html.theme-dark-blue .text-white\\/60 { color: var(--tw-db-text) !important; }
 
-/* Petites surfaces translucides souvent utilisées pour les barres collantes */
+/* Surfaces translucides (barres collantes, overlays blancs translucides, etc.) */
 html.theme-dark-blue .bg-gray-800\\/95 { background-color: color-mix(in srgb, var(--tw-db-surface) 95%, transparent) !important; }
-html.theme-dark-blue .bg-white\\/95.dark\\:bg-gray-800\\/95 { background-color: color-mix(in srgb, var(--tw-db-surface) 95%, transparent) !important; }
+html.theme-dark-blue .bg-white\\/95 { background-color: color-mix(in srgb, var(--tw-db-surface) 95%, transparent) !important; }
+
+/* Petits helpers pour que les cartes “claires” restent lisibles en sombre */
+html.theme-dark-blue .shadow,
+html.theme-dark-blue .shadow-lg,
+html.theme-dark-blue .shadow-xl { box-shadow: 0 10px 24px rgba(0,0,0,.35) !important; }
 `;
 
   const style = document.createElement('style');
@@ -181,12 +205,10 @@ html.theme-dark-blue .bg-white\\/95.dark\\:bg-gray-800\\/95 { background-color: 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  /** Charger patch CSS une fois */
-  useEffect(() => {
-    try { ensureThemeStylePatch(); } catch {}
-  }, []);
+  /** Patch CSS (une seule fois) */
+  useEffect(() => { try { ensureThemeStylePatch(); } catch {} }, []);
 
-  /** Chargement des préférences depuis localStorage */
+  /** Chargement des préférences */
   useEffect(() => {
     try {
       const saved = typeof localStorage !== 'undefined'
@@ -194,10 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : null;
       if (saved) {
         const settings = JSON.parse(saved);
-        dispatch({
-          type: 'LOAD_SETTINGS',
-          payload: { ...initialState.settings, ...settings },
-        });
+        dispatch({ type: 'LOAD_SETTINGS', payload: { ...initialState.settings, ...settings } });
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -212,39 +231,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(state.settings));
         localStorage.setItem(STORAGE_KEYS.language, state.settings.language);
       }
-    } catch {
-      /* no-op */
-    }
+    } catch {}
   }, [state.settings]);
 
   /**
-   * 👉 Application du thème + compat cas 1–4 demandés
-   * 1) tel clair  + app sombre → sombre “bleu foncé” (fonds plus sombres, texte blanc)
-   * 2) tel clair  + app clair  → clair
-   * 3) tel sombre + app clair  → forcer le VRAI clair (désactive auto-inversion) ; si l’UA insiste, nos couleurs restent explicites
-   * 4) tel sombre + app sombre → sombre “bleu foncé” mais un peu plus doux qu’un noir pur
+   * 👉 Application stricte du thème choisi (ignore les préférences système) :
+   * - app sombre => palette “bleu foncé” (référence)
+   * - app clair  => vrai clair, même si le téléphone est en sombre / force-dark
    */
   useEffect(() => {
     try {
       const root = document.documentElement;
       const appDark = state.settings.theme === 'dark';
 
-      // Tailwind "dark:" variants
+      // Variantes Tailwind
       root.classList.toggle('dark', appDark);
 
-      // Classe palette bleu foncé (notre skin sombre)
+      // Skin sombre “bleu foncé”
       root.classList.toggle('theme-dark-blue', appDark);
 
-      // Expose le thème (sert aussi au patch CSS)
+      // Expose (utilisé par le patch CSS light enforcer)
       root.setAttribute('data-theme', appDark ? 'dark' : 'light');
 
-      // Méta & couleurs systèmes (barres navigateur, etc.)
+      // Méta pour les barres navigateur
       const metaTheme = ensureMeta('theme-color');
       const metaColorScheme = ensureMeta('color-scheme');
       const metaSupportedSchemes = ensureMeta('supported-color-schemes');
 
       if (appDark) {
-        // Sombre bleu foncé
+        // Sombre : ta référence (tel clair + app sombre)
         (root.style as any).colorScheme = 'dark';
         document.body.style.backgroundColor = '#0f172a'; // slate-900
         document.body.style.color = '#ffffff';
@@ -252,21 +267,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (metaColorScheme) metaColorScheme.content = 'dark';
         if (metaSupportedSchemes) metaSupportedSchemes.content = 'dark';
       } else {
-        // Clair (vraiment clair même si le tel est en sombre)
+        // Vrai clair (même si téléphone en sombre)
         (root.style as any).colorScheme = 'light';
-        (root.style as any).forcedColorAdjust = 'none'; // aide à neutraliser certains modes forcés
+        (root.style as any).forcedColorAdjust = 'none';
         document.body.style.backgroundColor = '#ffffff';
         document.body.style.color = '#111827';
         if (metaTheme) metaTheme.content = '#ffffff';
         if (metaColorScheme) metaColorScheme.content = 'light';
         if (metaSupportedSchemes) metaSupportedSchemes.content = 'light';
       }
-    } catch {
-      /* no-op */
-    }
+    } catch {}
   }, [state.settings.theme]);
 
-  /** Mise à jour partielle des settings (thème, taille police, langue) */
+  /** Mise à jour partielle des settings */
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     Object.entries(newSettings).forEach(([key, value]) => {
       switch (key) {
@@ -285,7 +298,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  /** Navigue vers Lecture (utilisé pour “verset aléatoire”, résultats de recherche, etc.) */
+  /** Aller directement dans Lecture */
   const navigateToVerse = (book: string, chapter: number, verse?: number) => {
     dispatch({ type: 'SET_READING_CONTEXT', payload: { book, chapter, verse } });
     dispatch({ type: 'SET_PAGE', payload: 'reading' });
