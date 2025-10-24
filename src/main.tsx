@@ -4,6 +4,16 @@ import App from './App.tsx';
 import './index.css';
 
 const rootEl = document.getElementById('root')!;
+
+// main.tsx (avant createRoot)
+try {
+  const raw = localStorage.getItem('bibleApp_settings');
+  const theme = raw ? (JSON.parse(raw).theme ?? 'dark') : 'dark';
+  document.documentElement.style.colorScheme = theme;
+  document.body.style.backgroundColor = theme === 'dark' ? '#111827' : '#ffffff';
+  const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+  if (meta) meta.content = theme === 'dark' ? '#111827' : '#ffffff';
+} catch {}
 createRoot(rootEl).render(
   <StrictMode>
     <App />
