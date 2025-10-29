@@ -48,7 +48,7 @@ function AppContent() {
         search: 'Recherche biblique',
         settings: 'Réglages',
         about: 'À propos',
-        fallback: 'TheWordofGod.fr',
+        fallback: 'TheWord.fr',
       },
       en: {
         home: 'God speaks to you – Random verse',
@@ -56,7 +56,7 @@ function AppContent() {
         search: 'Bible Search',
         settings: 'Settings',
         about: 'About',
-        fallback: 'TheWordofGod.fr',
+        fallback: 'TheWord.fr',
       },
     } as const;
 
