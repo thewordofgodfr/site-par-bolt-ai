@@ -71,7 +71,7 @@ export default function Reading() {
 
   const isDark = state.settings.theme === 'dark';
 
-  // ===== Thèmes couleurs pour slots 1/2/3 (et boutons Livre/Chapitre mobile) =====
+  // ===== Thèmes couleurs pour slots 1/2/3 =====
   type SlotKey = 1 | 2 | 3;
   const SLOT_THEMES: Record<SlotKey, {
     solid: string;
@@ -158,7 +158,7 @@ export default function Reading() {
     }
   };
 
-  // Aller au chapitre suivant (enchaîne vers le livre suivant si besoin)
+  // Navigation suivante/précédente
   const handleNextUnit = () => {
     if (!selectedBook) return;
     if (selectedChapter < selectedBook.chapters) {
@@ -179,7 +179,6 @@ export default function Reading() {
     }
   };
 
-  // Aller au chapitre précédent (enchaîne vers le livre précédent si besoin)
   const handlePrevUnit = () => {
     if (!selectedBook) return;
     if (selectedChapter > 1) {
@@ -204,7 +203,7 @@ export default function Reading() {
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
-  // Helper pour résoudre un nom de livre (FR/EN/ID interne)
+  // Helper pour résoudre un nom de livre
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
     let found = books.find(b => b.name === bookIdentifier);
     if (found) return found;
@@ -232,7 +231,7 @@ export default function Reading() {
      Quick Slots
      ========================= */
   const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
-  // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l’auto-suivi mais “s’allume” visuellement
+  // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l’auto-suivi
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null); // 0..3 pour visuel
 
@@ -244,7 +243,6 @@ export default function Reading() {
   }
   useEffect(() => { refreshSlots(); }, []);
 
-  // Persiste automatiquement la position courante dans le slot actif (1/2/3)
   useEffect(() => {
     if (!selectedBook) return;
     if (activeSlot !== null && activeSlot !== 0) {
@@ -256,7 +254,6 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBook?.name, selectedChapter, activeSlot]);
 
-  // Persister l’info "dernier slot ACTIF (1..3)" pour rallumer le bouton au retour
   useEffect(() => {
     try {
       if (activeSlot && activeSlot !== 0) {
@@ -276,7 +273,7 @@ export default function Reading() {
     setTapped(i);
 
     if (i === 0) {
-      // Loupe = pas d'auto-suivi 1/2/3 mais surbrillance OK
+      // Loupe = surbrillance OK
       setActiveSlot(null);
       if (!slot) return;
       const b = resolveBook(slot.book);
@@ -284,57 +281,41 @@ export default function Reading() {
       setSelectedBook(b);
       setSelectedChapter(slot.chapter);
       setSelectedVerses([]);
-      setHighlightedVerse(slot.verse ?? null);     // highlight pour loupe
-      setScrollTargetVerse(slot.verse ?? null);    // cible de scroll
+      setHighlightedVerse(slot.verse ?? null);
+      setScrollTargetVerse(slot.verse ?? null);
       try { window.scrollTo({ top: 0 }); } catch {}
       fetchChapter(b, slot.chapter);
       saveReadingPosition(b.name, slot.chapter);
       return;
     }
 
-    // Slots 1/2/3 => ACTIFS (auto-suivi) SANS surbrillance
+    // Slots 1/2/3 => auto-suivi sans surbrillance
     setActiveSlot(i);
-
-    // Si vide : mémorise l'emplacement courant
     if (!slot) {
       if (!selectedBook) return;
       saveQuickSlot(i, { book: selectedBook.name, chapter: selectedChapter });
       refreshSlots();
       return;
     }
-
-    // Sinon : sauter à la position mémorisée (scroll vers verset cible, sans highlight)
     const book = resolveBook(slot.book);
     if (!book) return;
     setSelectedBook(book);
     setSelectedChapter(slot.chapter);
     setSelectedVerses([]);
-    setHighlightedVerse(null);                    // pas de surbrillance
-    setScrollTargetVerse(slot.verse ?? null);     // on scrollera précisément
+    setHighlightedVerse(null);
+    setScrollTargetVerse(slot.verse ?? null);
     try { window.scrollTo({ top: 0 }); } catch {}
     fetchChapter(book, slot.chapter);
     saveReadingPosition(book.name, slot.chapter);
   }
 
-  // Calcul du thème actif APRÈS l'init de activeSlot
   const activeTheme =
     (activeSlot === 1 || activeSlot === 2 || activeSlot === 3)
       ? SLOT_THEMES[activeSlot as SlotKey]
       : null;
 
-  // ===== Navigation contextuelle & restauration dernière lecture =====
+  // ===== Navigation contextuelle & restauration =====
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
-
-  // Sauvegarde scroll avant unload
-  useEffect(() => {
-    const save = () => saveScrollForCurrent();
-    window.addEventListener('beforeunload', save);
-    return () => {
-      save();
-      window.removeEventListener('beforeunload', save);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBook?.name, selectedChapter, state.settings.language]);
 
   useEffect(() => {
     if (hasLoadedContext) return;
@@ -365,7 +346,7 @@ export default function Reading() {
       }
     }
 
-    // 1) Contexte direct (recherche / verset aléatoire) → LOUPE (highlight OK)
+    // 1) Contexte direct (recherche / verset aléatoire)
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = resolveBook(state.readingContext.book);
       if (book) {
@@ -496,7 +477,8 @@ export default function Reading() {
       const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
         const isHighlight = highlightedVerse !== null && v === highlightedVerse;
-        scrollToVerseNumber(v, isHighlight, isHighlight ? 26 : 0); // offset highlight augmenté
+        // ↓ Descend un peu plus le verset surligné (~2–3mm)
+        scrollToVerseNumber(v, isHighlight, isHighlight ? 38 : 0);
         return;
       }
       if (Date.now() < programmaticScrollUntil.current) return;
@@ -553,7 +535,7 @@ export default function Reading() {
     return parts.join(',');
   };
 
-  // Copie sélection (patch sans backticks pour éviter l'erreur d’esbuild)
+  // Copie sélection (sans backticks — robustesse build)
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -574,7 +556,7 @@ export default function Reading() {
     }
   };
 
-  // Partage sélection (patch sans backticks)
+  // Partage sélection (sans backticks)
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -609,7 +591,7 @@ export default function Reading() {
     }
   };
 
-  /* ===== Gestes : uniquement gauche/droite ===== */
+  /* ===== Gestes : gauche/droite ===== */
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -645,8 +627,7 @@ export default function Reading() {
   // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
-  /* ===== Détection du verset d’ancrage au scroll (pour slots 1/2/3)
-     + Détection "bas de page" pour la loupe (aléatoire) ===== */
+  /* ===== Détection ancrage + CTA aléatoire ===== */
   const scrollDebounce = useRef<number | null>(null);
   const [showBottomRandom, setShowBottomRandom] = useState(false);
   useEffect(() => {
@@ -692,24 +673,22 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
-  // Générer un nouveau verset aléatoire (vrai 1/31k via JSONL)
+  // Nouveau verset aléatoire
   const pickNewRandom = async () => {
     try {
-      const v = await getRandomVerse(state.settings.language); // { book, chapter, verse, text, ... }
+      const v = await getRandomVerse(state.settings.language);
       if (!v) return;
 
-      // mémorise dans le slot loupe (0)
       saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse });
 
-      // résout le livre puis affiche
       const b = resolveBook(v.book);
       if (!b) return;
 
       setSelectedBook(b);
       setSelectedChapter(v.chapter);
       setSelectedVerses([]);
-      setHighlightedVerse(v.verse);      // surbrillance bleue
-      setScrollTargetVerse(v.verse);     // scroll précis
+      setHighlightedVerse(v.verse);
+      setScrollTargetVerse(v.verse);
       setTapped(0);
       setActiveSlot(null);
 
@@ -735,7 +714,7 @@ export default function Reading() {
           onTouchEnd={onTouchEnd}
           style={{ touchAction: 'manipulation' }}
         >
-          {/* Bandeau sticky (livre + chapitre + quick-slots) */}
+          {/* Bandeau sticky */}
           {selectedBook && (
             <div
               ref={commandBarRef}
@@ -744,7 +723,6 @@ export default function Reading() {
             >
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
                 <div className="flex items-center gap-2">
-                  {/* Titre : sur mobile, les 2 boutons colorés selon slot actif */}
                   <h2 className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-2`}>
                     {/* Mobile : Livre */}
                     <button
@@ -785,13 +763,13 @@ export default function Reading() {
                       <ChevronDown className="w-3 h-3 opacity-90" />
                     </button>
 
-                    {/* Desktop : "Chapitre N" en texte */}
+                    {/* Desktop : "Chapitre N" */}
                     <span className="hidden md:inline">
                       {t('chapter')} {selectedChapter}
                     </span>
                   </h2>
 
-                  {/* Quick-slots MOBILE à droite */}
+                  {/* Quick-slots MOBILE */}
                   <div className="md:hidden ml-auto flex items-center gap-2">
                     {[0, 1, 2, 3].map((i) => {
                       const s = quickSlots[i];
@@ -799,7 +777,6 @@ export default function Reading() {
                       const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                       let cls = '';
                       if (i === 0) {
-                        // Loupe = BLEU (plus indigo)
                         cls = isDark
                           ? `border border-blue-400/60 text-blue-200`
                           : `bg-white border border-blue-300 text-blue-700`;
@@ -830,7 +807,6 @@ export default function Reading() {
 
                   {/* Actions + Quick-slots DESKTOP */}
                   <div className="hidden md:flex items-center gap-2 ml-auto">
-                    {/* Quick-slots desktop */}
                     <div className="flex items-center gap-2 mr-2">
                       {[0, 1, 2, 3].map((i) => {
                         const s = quickSlots[i];
@@ -838,7 +814,6 @@ export default function Reading() {
                         const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                         let cls = '';
                         if (i === 0) {
-                          // Loupe = BLEU (plus indigo)
                           cls = isDark
                             ? `border border-blue-400/60 text-blue-200`
                             : `bg-white border border-blue-300 text-blue-700`;
@@ -923,7 +898,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Barre d'action — desktop/tablette (STICKY, pour copier/partager) */}
+          {/* Barre d'action — desktop/tablette */}
           {selectedVerses.length > 0 && (
             <div
               className="hidden md:block sticky z-40 mb-3"
@@ -963,7 +938,8 @@ export default function Reading() {
 
           {/* Contenu du chapitre */}
           {selectedBook ? (
-            <div className={`${isDark ? 'bg-gray-800' : (activeTheme ? activeTheme.lightPaper : 'bg-white')} sm:rounded-xl sm:shadow-lg sm:p-6 p-3 -mx-4 sm:mx-0 min-h-96`}>
+            // Pleine largeur mobile (bordures et padding réduits), espacement vertical resserré
+            <div className={`${isDark ? 'bg-gray-800' : (activeTheme ? activeTheme.lightPaper : 'bg-white')} sm:rounded-xl sm:shadow-lg sm:p-6 p-2 -mx-4 sm:mx-0 min-h-96`}>
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
@@ -971,16 +947,15 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Liste des versets — plus de divide-y ni bordures par défaut, espacement resserré */}
-                  <div className="space-y-1">
+                  {/* Liste des versets — aucun cadrillage, largeur max, espacement serré */}
+                  <div className="space-y-0.5">
                     {chapter.verses.map((v) => {
                       const isHighlighted = highlightedVerse === v.verse;
                       const isSelected = selectedVerses.includes(v.verse);
 
-                      // Fond de sélection (à part de la surbrillance bleue)
                       const selectedBg = isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : '';
 
-                      // Surbrillance BLEUE (même famille que le bouton aléatoire : indigo)
+                      // Surbrillance bleue (cohérente avec bouton indigo)
                       const highlightCls = isHighlighted
                         ? (isDark
                             ? 'bg-indigo-500/20 ring-2 ring-indigo-400/80'
@@ -993,9 +968,9 @@ export default function Reading() {
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
                           style={{ scrollMarginTop: stickyOffset }}
-                          className={`relative cursor-pointer px-2 sm:px-3 py-2 sm:py-3 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
+                          className={`relative cursor-pointer px-1 sm:px-2 py-1.5 sm:py-2.5 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
                         >
-                          {/* Libellé "verset N" en haut-droite */}
+                          {/* Libellé "verset N" */}
                           <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
                             {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
                             {isSelected && (
@@ -1003,10 +978,10 @@ export default function Reading() {
                             )}
                           </span>
 
-                          {/* Texte pleine largeur */}
+                          {/* Texte pleine largeur + line-height plus compacte */}
                           <div
                             className={`${isDark ? 'text-white' : 'text-gray-700'}`}
-                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.65' }}
+                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.5' }}
                           >
                             {v.text}
                           </div>
@@ -1165,7 +1140,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Hint swipe — 1/2 largeur, sans clignoter, 3s */}
+          {/* Hint swipe */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
               <div className="w-1/2 max-w-xs text-center px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white flex items-center justify-center">
