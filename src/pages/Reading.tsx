@@ -553,7 +553,7 @@ export default function Reading() {
     return parts.join(',');
   };
 
-  // Copie sélection
+  // Copie sélection (patch sans backticks pour éviter l'erreur d’esbuild)
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -561,10 +561,10 @@ export default function Reading() {
       .sort((a, b) => a.verse - b.verse);
 
     const ranges = compressRanges(chosen.map(v => v.verse));
-    const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-    const body = chosen.map(v => `${v.text}`).join('\n');
+    const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
+    const body = chosen.map(v => String(v.text)).join('\n');
 
-    const payload = `${ref}\n${body}`;
+    const payload = ref + '\n' + body;
 
     const ok = await copyToClipboard(payload);
     if (ok) {
@@ -574,7 +574,7 @@ export default function Reading() {
     }
   };
 
-  // Partage sélection
+  // Partage sélection (patch sans backticks)
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -582,11 +582,11 @@ export default function Reading() {
       .sort((a, b) => a.verse - b.verse);
 
     const ranges = compressRanges(chosen.map(v => v.verse));
-    const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-    const body = chosen.map(v => `${v.text}`).join('\n`);
+    const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
+    const body = chosen.map(v => String(v.text)).join('\n');
 
-    const shareUrl = 'www.theword.fr';
-    const shareText = `${ref}\n${body}\n\n${shareUrl}`;
+    const shareUrl = 'https://www.theword.fr';
+    const shareText = ref + '\n' + body + '\n\n' + shareUrl;
 
     try {
       const nav = navigator as any;
