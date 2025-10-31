@@ -24,10 +24,8 @@ export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
 
-  // Hauteur de la nav principale (bandeau du site)
   const NAV_H = 64;
 
-  // Hauteur dynamique du bandeau commandes (mesurée)
   const commandBarRef = useRef<HTMLDivElement>(null);
   const [cmdH, setCmdH] = useState(0);
   useEffect(() => {
@@ -43,21 +41,15 @@ export default function Reading() {
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Mise en évidence (depuis Recherche / Verset aléatoire / deep-link)
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
-
-  // Cible de scroll (sans surbrillance) — pour 1/2/3 et restaurations simples
   const [scrollTargetVerse, setScrollTargetVerse] = useState<number | null>(null);
 
-  // Sélection au tap
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [copiedKey, setCopiedKey] = useState<string>('');
 
-  // Overlays
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
   const [showChapterPicker, setShowChapterPicker] = useState<boolean>(false);
 
-  // Hint swipe (une seule fois par session) — 3 s
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v4:${state.settings.language}`;
@@ -71,7 +63,6 @@ export default function Reading() {
 
   const isDark = state.settings.theme === 'dark';
 
-  // ===== Thèmes couleurs pour slots 1/2/3 =====
   type SlotKey = 1 | 2 | 3;
   const SLOT_THEMES: Record<SlotKey, {
     solid: string;
@@ -86,7 +77,6 @@ export default function Reading() {
     3: { solid: 'bg-emerald-600 text-white', solidHover: 'hover:bg-emerald-500', ring: 'ring-emerald-400', mobileBtn: 'bg-emerald-600 text-white', mobileBtnHover: 'hover:bg-emerald-500', lightPaper: 'bg-emerald-50' },
   };
 
-  // ====== Chargement du chapitre ======
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
     setLoading(true);
     try {
@@ -99,7 +89,6 @@ export default function Reading() {
     }
   };
 
-  // Sauvegarde de la position de scroll du chapitre courant
   const saveScrollForCurrent = () => {
     if (!selectedBook) return;
     try {
@@ -137,7 +126,6 @@ export default function Reading() {
     }
   };
 
-  // Navigation suivante/précédente
   const handleNextUnit = () => {
     if (!selectedBook) return;
     if (selectedChapter < selectedBook.chapters) {
@@ -182,7 +170,6 @@ export default function Reading() {
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
 
-  // Helper pour résoudre un nom de livre
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
     let found = books.find(b => b.name === bookIdentifier);
     if (found) return found;
@@ -193,7 +180,6 @@ export default function Reading() {
     return null;
   };
 
-  // Parse URL params (deep-link depuis l’accueil)
   function readUrlIntent() {
     try {
       const u = new URL(window.location.href);
@@ -206,13 +192,9 @@ export default function Reading() {
     }
   }
 
-  /* =========================
-     Quick Slots
-     ========================= */
   const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
-  // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l’auto-suivi
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
-  const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null); // 0..3 pour visuel
+  const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null);
 
   function readAllSlots(): QuickSlot[] { return [0, 1, 2, 3].map(i => readQuickSlot(i)); }
   function refreshSlots() { try { setQuickSlots(readAllSlots()); } catch {} }
@@ -226,7 +208,6 @@ export default function Reading() {
         refreshSlots();
       } catch {}
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBook?.name, selectedChapter, activeSlot]);
 
   useEffect(() => {
@@ -247,7 +228,6 @@ export default function Reading() {
     setTapped(i);
 
     if (i === 0) {
-      // Loupe = surbrillance OK
       setActiveSlot(null);
       if (!slot) return;
       const b = resolveBook(slot.book); if (!b) return;
@@ -262,7 +242,6 @@ export default function Reading() {
       return;
     }
 
-    // Slots 1/2/3 => auto-suivi sans surbrillance
     setActiveSlot(i);
     if (!slot) {
       if (!selectedBook) return;
@@ -286,13 +265,11 @@ export default function Reading() {
       ? SLOT_THEMES[activeSlot as SlotKey]
       : null;
 
-  // ===== Navigation contextuelle & restauration =====
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
   useEffect(() => {
     if (hasLoadedContext) return;
 
-    // 0) Deep-link via URL ?b=...&c=...&v=...
     const { qb, qc, qv } = readUrlIntent();
     if (qb && qc) {
       const book = resolveBook(qb);
@@ -318,7 +295,6 @@ export default function Reading() {
       }
     }
 
-    // 1) Contexte direct (recherche / verset aléatoire)
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = resolveBook(state.readingContext.book);
       if (book) {
@@ -337,7 +313,6 @@ export default function Reading() {
       }
     }
 
-    // 1bis) Dernière action = LOUPE
     try {
       const rawTapped = localStorage.getItem('twog:qs:lastTapped');
       if (rawTapped === '0') {
@@ -360,7 +335,6 @@ export default function Reading() {
       }
     } catch {}
 
-    // 1ter) Sinon slot ACTIF 1..3
     try {
       const rawActive = localStorage.getItem('twog:qs:lastActive');
       const i = rawActive ? parseInt(rawActive, 10) : NaN;
@@ -384,7 +358,6 @@ export default function Reading() {
       }
     } catch {}
 
-    // 2) Dernière lecture (fallback)
     const last = state.settings.lastReadingPosition;
     if (last && last.book && last.chapter > 0) {
       const book = resolveBook(last.book);
@@ -400,7 +373,6 @@ export default function Reading() {
       }
     }
 
-    // 3) Première ouverture → John 1
     const john = resolveBook('John');
     if (john) {
       setSelectedBook(john);
@@ -409,10 +381,8 @@ export default function Reading() {
       try { window.scrollTo({ top: 0 }); } catch {}
       setHasLoadedContext(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
 
-  /* ============ Scroll ciblé ============ */
   const suppressAutoSaveUntil = useRef<number>(0);
   const programmaticScrollUntil = useRef<number>(0);
 
@@ -449,7 +419,6 @@ export default function Reading() {
       const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
         const isHighlight = highlightedVerse !== null && v === highlightedVerse;
-        // verset surligné légèrement plus bas pour le regard
         scrollToVerseNumber(v, isHighlight, isHighlight ? 38 : 0);
         return;
       }
@@ -474,10 +443,8 @@ export default function Reading() {
 
     const t = setTimeout(doScroll, 50);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
 
-  // Disparition automatique de la surbrillance après 10 s
   useEffect(() => {
     if (highlightedVerse !== null) {
       const timer = setTimeout(() => setHighlightedVerse(null), 10000);
@@ -485,12 +452,10 @@ export default function Reading() {
     }
   }, [highlightedVerse]);
 
-  // ===== Sélection par tap verset =====
   const toggleSelectVerse = (num: number) => {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
 
-  // Compactage de plages
   const compressRanges = (nums: number[]) => {
     if (nums.length === 0) return '';
     const sorted = [...nums].sort((a, b) => a - b);
@@ -507,7 +472,6 @@ export default function Reading() {
     return parts.join(',');
   };
 
-  // Copie sélection
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -517,7 +481,6 @@ export default function Reading() {
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
     const body = chosen.map(v => String(v.text)).join('\n');
-
     const payload = ref + '\n' + body;
 
     const ok = await copyToClipboard(payload);
@@ -528,7 +491,6 @@ export default function Reading() {
     }
   };
 
-  // Partage sélection
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -560,7 +522,6 @@ export default function Reading() {
     }
   };
 
-  /* ===== Gestes : gauche/droite ===== */
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -590,10 +551,8 @@ export default function Reading() {
     swipeHandled.current = false;
   };
 
-  // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
-  /* ===== Détection ancrage + CTA aléatoire ===== */
   const scrollDebounce = useRef<number | null>(null);
   const [showBottomRandom, setShowBottomRandom] = useState(false);
   useEffect(() => {
@@ -632,10 +591,8 @@ export default function Reading() {
       window.removeEventListener('scroll', onScroll);
       if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
-  // Nouveau verset aléatoire
   const pickNewRandom = async () => {
     try {
       const v = await getRandomVerse(state.settings.language);
@@ -663,10 +620,8 @@ export default function Reading() {
     }
   };
 
-  // ====== Rendu
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
-      {/* Contenu principal */}
       <div className="container mx-auto px-4 pb-6">
         <div
           className="max-w-6xl mx-auto"
@@ -675,26 +630,29 @@ export default function Reading() {
           onTouchEnd={onTouchEnd}
           style={{ touchAction: 'manipulation' }}
         >
-          {/* Bandeau sticky */}
+          {/* Bandeau sticky — full-bleed en mobile */}
           {selectedBook && (
-            <div ref={commandBarRef} className="sticky z-30 bg-transparent" style={{ top: `${NAV_H}px` }}>
-              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
-                {/* MOBILE: colonne pleine largeur ; DESKTOP: ligne */}
+            <div
+              ref={commandBarRef}
+              className="sticky z-30 bg-transparent -mx-4 sm:mx-0"
+              style={{ top: `${NAV_H}px` }}
+            >
+              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-none sm:rounded-md md:rounded-lg shadow md:shadow-lg px-4 py-2 md:p-3 mb-2`}>
+                {/* MOBILE: colonne ; DESKTOP: ligne */}
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2 w-full">
                   {/* Bloc gauche : livre/chapitre + titre */}
                   <div className="flex flex-col w-full md:w-auto">
                     <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex flex-col md:flex-row md:items-center gap-2 w-full`}>
                       {/* Ligne haute mobile: Livre + Chapitre pleine largeur */}
                       <div className="flex w-full items-center gap-2">
-                        {/* Livre (mobile: flex-1) */}
                         <button
                           type="button"
                           onClick={() => setShowBookPicker(true)}
                           aria-expanded={showBookPicker}
                           className={`inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 md:hidden ${
                             isDark
-                              ? `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                              : `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              ? `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              : `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
                           }`}
                           title={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
@@ -703,15 +661,14 @@ export default function Reading() {
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
-                        {/* Chapitre (mobile: flex-1) */}
                         <button
                           type="button"
                           onClick={() => setShowChapterPicker(true)}
                           aria-expanded={showChapterPicker}
                           className={`inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 md:hidden ${
                             isDark
-                              ? `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                              : `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              ? `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              : `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
                           }`}
                           title={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
@@ -720,7 +677,6 @@ export default function Reading() {
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
-                        {/* Loupe + slots 1/2/3 (mobile) */}
                         <div className="flex items-center gap-2 md:hidden">
                           {[0, 1, 2, 3].map((i) => {
                             const s = quickSlots[i];
@@ -876,14 +832,12 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Liste des versets — espacement serré */}
                   <div className="space-y-0">
                     {chapter.verses.map((v) => {
                       const isHighlighted = highlightedVerse === v.verse;
                       const isSelected = selectedVerses.includes(v.verse);
 
                       const selectedBg = isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : '';
-
                       const highlightCls = isHighlighted
                         ? (isDark ? 'bg-indigo-500/20 ring-2 ring-indigo-400/80' : 'bg-indigo-50 ring-2 ring-indigo-300')
                         : '';
@@ -896,7 +850,6 @@ export default function Reading() {
                           style={{ scrollMarginTop: stickyOffset }}
                           className={`relative cursor-pointer px-1 sm:px-2 py-2 sm:py-2.5 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
                         >
-                          {/* Libellé "verset N" */}
                           <span className={`absolute right-2 top-0.5 sm:top-1 text-[11px] sm:text-xs select-none pointer-events-none ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
                             {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
                             {isSelected && (
@@ -904,7 +857,6 @@ export default function Reading() {
                             )}
                           </span>
 
-                          {/* Texte pleine largeur */}
                           <div
                             className={`${isDark ? 'text-white' : 'text-gray-700'}`}
                             style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.55' }}
@@ -1039,7 +991,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* CTA aléatoire en bas (mode loupe) */}
           {showBottomRandom && (
             <div className="fixed bottom-4 right-4 z-40 sm:right-6 sm:bottom-6">
               <button onClick={pickNewRandom} className="px-3 py-2 rounded-full shadow-lg bg-indigo-600 text-white text-sm active:scale-95">
@@ -1048,7 +999,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Toasts */}
           {copiedKey === 'selection' && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow bg-green-600 text-white z-50">
               {state.settings.language === 'fr' ? 'Sélection copiée' : 'Selection copied'}
@@ -1060,7 +1010,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Hint swipe */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
               <div className="w-1/2 max-w-xs text-center px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white flex items-center justify-center">
@@ -1075,4 +1024,3 @@ export default function Reading() {
     </div>
   );
 }
-
