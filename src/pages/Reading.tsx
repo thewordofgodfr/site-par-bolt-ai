@@ -43,7 +43,7 @@ export default function Reading() {
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Mise en évidence (depuis Recherche / Verset aléatoire) — LOUPE uniquement
+  // Mise en évidence (depuis Recherche / Verset aléatoire / deep-link)
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
 
   // Cible de scroll (sans surbrillance) — pour 1/2/3 et restaurations simples
@@ -57,7 +57,7 @@ export default function Reading() {
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
   const [showChapterPicker, setShowChapterPicker] = useState<boolean>(false);
 
-  // Hint swipe (une seule fois par session) — 3 s, sans clignoter, 1 mot
+  // Hint swipe (une seule fois par session) — 3 s
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v4:${state.settings.language}`;
@@ -81,7 +81,6 @@ export default function Reading() {
     mobileBtnHover: string;
     lightPaper: string;
   }> = {
-    // Slot 1 -> AMBRE (pour ne pas “voler” le bleu réservé à la loupe)
     1: {
       solid: 'bg-amber-600 text-white',
       solidHover: 'hover:bg-amber-500',
@@ -216,6 +215,19 @@ export default function Reading() {
     return null;
   };
 
+  // Parse URL params (deep-link depuis l’accueil)
+  function readUrlIntent() {
+    try {
+      const u = new URL(window.location.href);
+      const qb = u.searchParams.get('b') || u.searchParams.get('book');
+      const qc = u.searchParams.get('c') || u.searchParams.get('chapter');
+      const qv = u.searchParams.get('v') || u.searchParams.get('verse');
+      return { qb, qc, qv };
+    } catch {
+      return { qb: null, qc: null, qv: null };
+    }
+  }
+
   /* =========================
      Quick Slots
      ========================= */
@@ -326,6 +338,32 @@ export default function Reading() {
 
   useEffect(() => {
     if (hasLoadedContext) return;
+
+    // 0) Deep-link via URL ?b=...&c=...&v=...
+    const { qb, qc, qv } = readUrlIntent();
+    if (qb && qc) {
+      const book = resolveBook(qb);
+      const chapNum = parseInt(qc, 10);
+      const verseNum = qv ? parseInt(qv, 10) : NaN;
+      if (book && Number.isFinite(chapNum) && chapNum >= 1 && chapNum <= book.chapters) {
+        setSelectedBook(book);
+        setSelectedChapter(chapNum);
+        fetchChapter(book, chapNum);
+        setSelectedVerses([]);
+        if (Number.isFinite(verseNum)) {
+          setHighlightedVerse(verseNum);
+          setScrollTargetVerse(verseNum);
+          setTapped(0);
+          setActiveSlot(null);
+        } else {
+          setHighlightedVerse(null);
+          setScrollTargetVerse(null);
+        }
+        saveReadingPosition(book.name, chapNum);
+        setHasLoadedContext(true);
+        return;
+      }
+    }
 
     // 1) Contexte direct (recherche / verset aléatoire) → LOUPE (highlight OK)
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
@@ -485,6 +523,14 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
 
+  // Disparition automatique de la surbrillance après 10 s
+  useEffect(() => {
+    if (highlightedVerse !== null) {
+      const timer = setTimeout(() => setHighlightedVerse(null), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedVerse]);
+
   // ===== Sélection par tap verset =====
   const toggleSelectVerse = (num: number) => {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
@@ -528,7 +574,7 @@ export default function Reading() {
     }
   };
 
-  // Partage sélection (Web Share API si dispo, sinon copie + toast) — lien unique
+  // Partage sélection
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
@@ -537,7 +583,7 @@ export default function Reading() {
 
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = `${getBookName(selectedBook)} ${chapter.chapter}:${ranges}`;
-    const body = chosen.map(v => `${v.text}`).join('\n');
+    const body = chosen.map(v => `${v.text}`).join('\n`);
 
     const shareUrl = 'www.theword.fr';
     const shareText = `${ref}\n${body}\n\n${shareUrl}`;
@@ -547,7 +593,7 @@ export default function Reading() {
       if (nav?.share) {
         await nav.share({
           title: ref,
-          text: shareText, // pas de champ url => évite le doublon
+          text: shareText,
         });
         setSelectedVerses([]);
       } else {
@@ -570,7 +616,7 @@ export default function Reading() {
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
-        swipeHandled.current = false;
+    swipeHandled.current = false;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
@@ -647,35 +693,36 @@ export default function Reading() {
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
   // Générer un nouveau verset aléatoire (vrai 1/31k via JSONL)
-const pickNewRandom = async () => {
-  try {
-    const v = await getRandomVerse(state.settings.language); // { book, chapter, verse, text, ... }
-    if (!v) return;
+  const pickNewRandom = async () => {
+    try {
+      const v = await getRandomVerse(state.settings.language); // { book, chapter, verse, text, ... }
+      if (!v) return;
 
-    // mémorise dans le slot loupe (0)
-    saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse });
+      // mémorise dans le slot loupe (0)
+      saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse });
 
-    // résout le livre puis affiche
-    const b = resolveBook(v.book);
-    if (!b) return;
+      // résout le livre puis affiche
+      const b = resolveBook(v.book);
+      if (!b) return;
 
-    setSelectedBook(b);
-    setSelectedChapter(v.chapter);
-    setSelectedVerses([]);
-    setHighlightedVerse(v.verse);      // surbrillance
-    setScrollTargetVerse(v.verse);     // scroll précis
-    setTapped(0);
-    setActiveSlot(null);
+      setSelectedBook(b);
+      setSelectedChapter(v.chapter);
+      setSelectedVerses([]);
+      setHighlightedVerse(v.verse);      // surbrillance bleue
+      setScrollTargetVerse(v.verse);     // scroll précis
+      setTapped(0);
+      setActiveSlot(null);
 
-    fetchChapter(b, v.chapter);
-    saveReadingPosition(b.name, v.chapter);
-    setShowBottomRandom(false);
+      fetchChapter(b, v.chapter);
+      saveReadingPosition(b.name, v.chapter);
+      setShowBottomRandom(false);
 
-    try { window.scrollTo({ top: 0 }); } catch {}
-  } catch (e) {
-    console.error('random error', e);
-  }
-};
+      try { window.scrollTo({ top: 0 }); } catch {}
+    } catch (e) {
+      console.error('random error', e);
+    }
+  };
+
   // ====== Rendu
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
@@ -924,22 +971,21 @@ const pickNewRandom = async () => {
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Liste des versets */}
-                  <div className={`${isDark ? 'divide-gray-700' : 'divide-gray-200'} divide-y`}>
-                    {chapter.verses.map((v, idx) => {
+                  {/* Liste des versets — plus de divide-y ni bordures par défaut, espacement resserré */}
+                  <div className="space-y-1">
+                    {chapter.verses.map((v) => {
                       const isHighlighted = highlightedVerse === v.verse;
                       const isSelected = selectedVerses.includes(v.verse);
 
-                      const selectedBg = isSelected ? (isDark ? 'bg-blue-900/40' : 'bg-blue-50') : '';
-                      const highlightBg = isHighlighted ? (isDark ? 'bg-yellow-900/30' : 'bg-yellow-50') : '';
+                      // Fond de sélection (à part de la surbrillance bleue)
+                      const selectedBg = isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : '';
 
-                      const firstVerseBorder = idx === 0
-                        ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-200')
+                      // Surbrillance BLEUE (même famille que le bouton aléatoire : indigo)
+                      const highlightCls = isHighlighted
+                        ? (isDark
+                            ? 'bg-indigo-500/20 ring-2 ring-indigo-400/80'
+                            : 'bg-indigo-50 ring-2 ring-indigo-300')
                         : '';
-
-                      const leftBorder = isSelected
-                        ? 'border-l-4 border-blue-500'
-                        : (isDark ? 'border-l border-gray-700' : 'border-l border-gray-200');
 
                       return (
                         <div
@@ -947,7 +993,7 @@ const pickNewRandom = async () => {
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
                           style={{ scrollMarginTop: stickyOffset }}
-                          className={`relative cursor-pointer px-3 pt-6 sm:pt-7 pb-2 sm:pb-3 transition-colors ${leftBorder} ${selectedBg} ${highlightBg} ${firstVerseBorder}`}
+                          className={`relative cursor-pointer px-2 sm:px-3 py-2 sm:py-3 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
                         >
                           {/* Libellé "verset N" en haut-droite */}
                           <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
@@ -960,7 +1006,7 @@ const pickNewRandom = async () => {
                           {/* Texte pleine largeur */}
                           <div
                             className={`${isDark ? 'text-white' : 'text-gray-700'}`}
-                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.7' }}
+                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.65' }}
                           >
                             {v.text}
                           </div>
@@ -1119,7 +1165,7 @@ const pickNewRandom = async () => {
             </div>
           )}
 
-          {/* Hint swipe — 1/2 largeur, sans clignoter, 3s, un seul mot + petites flèches */}
+          {/* Hint swipe — 1/2 largeur, sans clignoter, 3s */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
               <div className="w-1/2 max-w-xs text-center px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white flex items-center justify-center">
