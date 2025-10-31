@@ -1,3 +1,4 @@
+// src/pages/home.tsx
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
@@ -75,10 +76,10 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
-  // Clic sur la citation fixe -> ouvrir la lecture de Jérémie 23
+  // Clic sur la citation fixe -> ouvrir Jérémie 23:29 en surbrillance bleue
   const openJeremiah23 = () => {
-    try { saveQuickSlot(0, { book: 'Jeremiah', chapter: 23 }); } catch {}
-    navigateToVerse('Jeremiah', 23);
+    try { saveQuickSlot(0, { book: 'Jeremiah', chapter: 23, verse: 29 }); } catch {}
+    navigateToVerse('Jeremiah', 23, 29);
   };
 
   return (
@@ -143,8 +144,8 @@ export default function Home() {
             <button
               onClick={openJeremiah23}
               className="mx-auto block focus:outline-none"
-              aria-label={lang === 'fr' ? 'Ouvrir Jérémie 23' : 'Open Jeremiah 23'}
-              title={lang === 'fr' ? 'Ouvrir Jérémie 23' : 'Open Jeremiah 23'}
+              aria-label={lang === 'fr' ? 'Ouvrir Jérémie 23:29' : 'Open Jeremiah 23:29'}
+              title={lang === 'fr' ? 'Ouvrir Jérémie 23:29' : 'Open Jeremiah 23:29'}
             >
               <p className={`italic hover:underline ${isDark ? 'text-white' : 'text-gray-700'} text-base md:text-lg`}>
                 {lang === 'fr'
