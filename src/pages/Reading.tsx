@@ -50,6 +50,7 @@ export default function Reading() {
   const [scrollTargetVerse, setScrollTargetVerse] = useState<number | null>(null);
 
   // Sélection au tap
+  the `verset` label is slightly overlapping your text. We’ll move it up and give each verse block a touch more internal padding so it doesn’t collide visually, while still keeping the global spacing tight.
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [copiedKey, setCopiedKey] = useState<string>('');
 
@@ -73,14 +74,17 @@ export default function Reading() {
 
   // ===== Thèmes couleurs pour slots 1/2/3 =====
   type SlotKey = 1 | 2 | 3;
-  const SLOT_THEMES: Record<SlotKey, {
-    solid: string;
-    solidHover: string;
-    ring: string;
-    mobileBtn: string;
-    mobileBtnHover: string;
-    lightPaper: string;
-  }> = {
+  const SLOT_THEMES: Record<
+    SlotKey,
+    {
+      solid: string;
+      solidHover: string;
+      ring: string;
+      mobileBtn: string;
+      mobileBtnHover: string;
+      lightPaper: string;
+    }
+  > = {
     1: {
       solid: 'bg-amber-600 text-white',
       solidHover: 'hover:bg-amber-500',
@@ -111,7 +115,11 @@ export default function Reading() {
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
     setLoading(true);
     try {
-      const chapterData = await getChapter(book.name, chapterNum, state.settings.language);
+      const chapterData = await getChapter(
+        book.name,
+        chapterNum,
+        state.settings.language
+      );
       setChapter(chapterData);
     } catch (error) {
       console.error('Error fetching chapter:', error);
@@ -142,7 +150,9 @@ export default function Reading() {
 
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
-    try { window.scrollTo({ top: 0 }); } catch {}
+    try {
+      window.scrollTo({ top: 0 });
+    } catch {}
   };
 
   const handleChapterSelect = (chapterNum: number) => {
@@ -152,7 +162,9 @@ export default function Reading() {
       setSelectedVerses([]);
       setHighlightedVerse(null);
       setScrollTargetVerse(null);
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
       fetchChapter(selectedBook, chapterNum);
       saveReadingPosition(selectedBook.name, chapterNum);
     }
@@ -165,7 +177,7 @@ export default function Reading() {
       handleChapterSelect(selectedChapter + 1);
       return;
     }
-    const idx = books.findIndex(b => b.name === selectedBook.name);
+    const idx = books.findIndex((b) => b.name === selectedBook.name);
     if (idx >= 0 && idx < books.length - 1) {
       const nextBook = books[idx + 1];
       setSelectedBook(nextBook);
@@ -173,7 +185,9 @@ export default function Reading() {
       setSelectedVerses([]);
       setHighlightedVerse(null);
       setScrollTargetVerse(null);
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
       fetchChapter(nextBook, 1);
       saveReadingPosition(nextBook.name, 1);
     }
@@ -185,7 +199,7 @@ export default function Reading() {
       handleChapterSelect(selectedChapter - 1);
       return;
     }
-    const idx = books.findIndex(b => b.name === selectedBook.name);
+    const idx = books.findIndex((b) => b.name === selectedBook.name);
     if (idx > 0) {
       const prevBook = books[idx - 1];
       setSelectedBook(prevBook);
@@ -193,23 +207,26 @@ export default function Reading() {
       setSelectedVerses([]);
       setHighlightedVerse(null);
       setScrollTargetVerse(null);
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
       fetchChapter(prevBook, prevBook.chapters);
       saveReadingPosition(prevBook.name, prevBook.chapters);
     }
   };
 
-  const oldTestamentBooks = books.filter(book => book.testament === 'old');
-  const newTestamentBooks = books.filter(book => book.testament === 'new');
-  const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
+  const oldTestamentBooks = books.filter((book) => book.testament === 'old');
+  const newTestamentBooks = books.filter((book) => book.testament === 'new');
+  const getBookName = (book: BibleBook) =>
+    state.settings.language === 'fr' ? book.nameFr : book.nameEn;
 
   // Helper pour résoudre un nom de livre
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
-    let found = books.find(b => b.name === bookIdentifier);
+    let found = books.find((b) => b.name === bookIdentifier);
     if (found) return found;
-    found = books.find(b => b.nameEn === bookIdentifier);
+    found = books.find((b) => b.nameEn === bookIdentifier);
     if (found) return found;
-    found = books.find(b => b.nameFr === bookIdentifier);
+    found = books.find((b) => b.nameFr === bookIdentifier);
     if (found) return found;
     return null;
   };
@@ -230,24 +247,36 @@ export default function Reading() {
   /* =========================
      Quick Slots
      ========================= */
-  const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
+  const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([
+    null,
+    null,
+    null,
+    null,
+  ]);
   // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l’auto-suivi
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null); // 0..3 pour visuel
 
   function readAllSlots(): QuickSlot[] {
-    return [0, 1, 2, 3].map(i => readQuickSlot(i));
+    return [0, 1, 2, 3].map((i) => readQuickSlot(i));
   }
   function refreshSlots() {
-    try { setQuickSlots(readAllSlots()); } catch {}
+    try {
+      setQuickSlots(readAllSlots());
+    } catch {}
   }
-  useEffect(() => { refreshSlots(); }, []);
+  useEffect(() => {
+    refreshSlots();
+  }, []);
 
   useEffect(() => {
     if (!selectedBook) return;
     if (activeSlot !== null && activeSlot !== 0) {
       try {
-        saveQuickSlot(activeSlot, { book: selectedBook.name, chapter: selectedChapter });
+        saveQuickSlot(activeSlot, {
+          book: selectedBook.name,
+          chapter: selectedChapter,
+        });
         refreshSlots();
       } catch {}
     }
@@ -264,7 +293,9 @@ export default function Reading() {
 
   function setTapped(i: number) {
     setLastTappedSlot(i);
-    try { localStorage.setItem('twog:qs:lastTapped', String(i)); } catch {}
+    try {
+      localStorage.setItem('twog:qs:lastTapped', String(i));
+    } catch {}
   }
 
   function jumpToSlot(i: number) {
@@ -283,7 +314,9 @@ export default function Reading() {
       setSelectedVerses([]);
       setHighlightedVerse(slot.verse ?? null);
       setScrollTargetVerse(slot.verse ?? null);
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
       fetchChapter(b, slot.chapter);
       saveReadingPosition(b.name, slot.chapter);
       return;
@@ -293,7 +326,10 @@ export default function Reading() {
     setActiveSlot(i);
     if (!slot) {
       if (!selectedBook) return;
-      saveQuickSlot(i, { book: selectedBook.name, chapter: selectedChapter });
+      saveQuickSlot(i, {
+        book: selectedBook.name,
+        chapter: selectedChapter,
+      });
       refreshSlots();
       return;
     }
@@ -304,13 +340,15 @@ export default function Reading() {
     setSelectedVerses([]);
     setHighlightedVerse(null);
     setScrollTargetVerse(slot.verse ?? null);
-    try { window.scrollTo({ top: 0 }); } catch {}
+    try {
+      window.scrollTo({ top: 0 });
+    } catch {}
     fetchChapter(book, slot.chapter);
     saveReadingPosition(book.name, slot.chapter);
   }
 
   const activeTheme =
-    (activeSlot === 1 || activeSlot === 2 || activeSlot === 3)
+    activeSlot === 1 || activeSlot === 2 || activeSlot === 3
       ? SLOT_THEMES[activeSlot as SlotKey]
       : null;
 
@@ -326,7 +364,12 @@ export default function Reading() {
       const book = resolveBook(qb);
       const chapNum = parseInt(qc, 10);
       const verseNum = qv ? parseInt(qv, 10) : NaN;
-      if (book && Number.isFinite(chapNum) && chapNum >= 1 && chapNum <= book.chapters) {
+      if (
+        book &&
+        Number.isFinite(chapNum) &&
+        chapNum >= 1 &&
+        chapNum <= book.chapters
+      ) {
         setSelectedBook(book);
         setSelectedChapter(chapNum);
         fetchChapter(book, chapNum);
@@ -347,7 +390,11 @@ export default function Reading() {
     }
 
     // 1) Contexte direct (recherche / verset aléatoire)
-    if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
+    if (
+      state.readingContext &&
+      state.readingContext.book &&
+      state.readingContext.chapter > 0
+    ) {
       const book = resolveBook(state.readingContext.book);
       if (book) {
         setSelectedBook(book);
@@ -360,7 +407,10 @@ export default function Reading() {
         setActiveSlot(null);
         saveReadingPosition(book.name, state.readingContext.chapter);
         setHasLoadedContext(true);
-        dispatch({ type: 'SET_READING_CONTEXT', payload: { book: '', chapter: 0 } });
+        dispatch({
+          type: 'SET_READING_CONTEXT',
+          payload: { book: '', chapter: 0 },
+        });
         return;
       }
     }
@@ -434,11 +484,19 @@ export default function Reading() {
       setSelectedBook(john);
       setSelectedChapter(1);
       fetchChapter(john, 1);
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
       setHasLoadedContext(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
+  }, [
+    state.readingContext,
+    books,
+    hasLoadedContext,
+    dispatch,
+    state.settings.lastReadingPosition,
+  ]);
 
   /* ============ Scroll ciblé ============ */
   const suppressAutoSaveUntil = useRef<number>(0);
@@ -460,9 +518,13 @@ export default function Reading() {
       const el = document.getElementById(`verse-${v}`);
       if (el) {
         const rect = el.getBoundingClientRect();
-        const current = window.scrollY || document.documentElement.scrollTop || 0;
+        const current =
+          window.scrollY || document.documentElement.scrollTop || 0;
         const target = current + rect.top - offset;
-        window.scrollTo({ top: Math.max(target, 0), behavior: smooth ? 'smooth' : 'auto' });
+        window.scrollTo({
+          top: Math.max(target, 0),
+          behavior: smooth ? 'smooth' : 'auto',
+        });
         return;
       }
       if (tries++ < maxTries) requestAnimationFrame(tick);
@@ -474,10 +536,10 @@ export default function Reading() {
     if (!chapter || !selectedBook) return;
 
     const doScroll = () => {
-      const v = (scrollTargetVerse ?? highlightedVerse);
+      const v = scrollTargetVerse ?? highlightedVerse;
       if (v !== null) {
         const isHighlight = highlightedVerse !== null && v === highlightedVerse;
-        // ↓ Descend un peu plus le verset surligné (~2–3mm)
+        // garder le verset descendu un peu
         scrollToVerseNumber(v, isHighlight, isHighlight ? 38 : 0);
         return;
       }
@@ -515,7 +577,11 @@ export default function Reading() {
 
   // ===== Sélection par tap verset =====
   const toggleSelectVerse = (num: number) => {
-    setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
+    setSelectedVerses((prev) =>
+      prev.includes(num)
+        ? prev.filter((n) => n !== num)
+        : [...prev, num]
+    );
   };
 
   // Compactage de plages
@@ -525,26 +591,34 @@ export default function Reading() {
     const parts: string[] = [];
     let start = sorted[0];
     let prev = sorted[0];
-    const push = () => (start === prev ? parts.push(`${start}`) : parts.push(`${start}-${prev}`));
+    const push = () =>
+      start === prev
+        ? parts.push(`${start}`)
+        : parts.push(`${start}-${prev}`);
     for (let i = 1; i < sorted.length; i++) {
       const n = sorted[i];
       if (n === prev + 1) prev = n;
-      else { push(); start = n; prev = n; }
+      else {
+        push();
+        start = n;
+        prev = n;
+      }
     }
     push();
     return parts.join(',');
   };
 
-  // Copie sélection (sans backticks — robustesse build)
+  // Copie sélection
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
-      .filter(v => selectedVerses.includes(v.verse))
+      .filter((v) => selectedVerses.includes(v.verse))
       .sort((a, b) => a.verse - b.verse);
 
-    const ranges = compressRanges(chosen.map(v => v.verse));
-    const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
-    const body = chosen.map(v => String(v.text)).join('\n');
+    const ranges = compressRanges(chosen.map((v) => v.verse));
+    const ref =
+      getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
+    const body = chosen.map((v) => String(v.text)).join('\n');
 
     const payload = ref + '\n' + body;
 
@@ -556,16 +630,17 @@ export default function Reading() {
     }
   };
 
-  // Partage sélection (sans backticks)
+  // Partage sélection
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
     const chosen = chapter.verses
-      .filter(v => selectedVerses.includes(v.verse))
+      .filter((v) => selectedVerses.includes(v.verse))
       .sort((a, b) => a.verse - b.verse);
 
-    const ranges = compressRanges(chosen.map(v => v.verse));
-    const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
-    const body = chosen.map(v => String(v.text)).join('\n');
+    const ranges = compressRanges(chosen.map((v) => v.verse));
+    const ref =
+      getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
+    const body = chosen.map((v) => String(v.text)).join('\n');
 
     const shareUrl = 'https://www.theword.fr';
     const shareText = ref + '\n' + body + '\n\n' + shareUrl;
@@ -592,7 +667,9 @@ export default function Reading() {
   };
 
   /* ===== Gestes : gauche/droite ===== */
-  const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeStart = useRef<{ x: number; y: number; time: number } | null>(
+    null
+  );
   const swipeHandled = useRef(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -602,7 +679,8 @@ export default function Reading() {
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
+    if (!swipeStart.current || swipeHandled.current || loading || !selectedBook)
+      return;
     const t = e.touches[0];
     const dx = t.clientX - swipeStart.current.x;
     const dy = t.clientY - swipeStart.current.y;
@@ -658,10 +736,15 @@ export default function Reading() {
           }
 
           const nearBottom =
-            window.innerHeight + (window.scrollY || document.documentElement.scrollTop || 0)
-            >= (document.documentElement.scrollHeight || document.body.scrollHeight) - 180;
+            window.innerHeight +
+              (window.scrollY || document.documentElement.scrollTop || 0) >=
+            (document.documentElement.scrollHeight ||
+              document.body.scrollHeight) -
+              180;
 
-          setShowBottomRandom(nearBottom && lastTappedSlot === 0 && selectedVerses.length === 0);
+          setShowBottomRandom(
+            nearBottom && lastTappedSlot === 0 && selectedVerses.length === 0
+          );
         } catch {}
       }, 160);
     };
@@ -671,7 +754,15 @@ export default function Reading() {
       if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
+  }, [
+    chapter,
+    selectedBook?.name,
+    selectedChapter,
+    activeSlot,
+    cmdH,
+    lastTappedSlot,
+    selectedVerses.length,
+  ]);
 
   // Nouveau verset aléatoire
   const pickNewRandom = async () => {
@@ -696,7 +787,9 @@ export default function Reading() {
       saveReadingPosition(b.name, v.chapter);
       setShowBottomRandom(false);
 
-      try { window.scrollTo({ top: 0 }); } catch {}
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {}
     } catch (e) {
       console.error('random error', e);
     }
@@ -704,7 +797,11 @@ export default function Reading() {
 
   // ====== Rendu
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
+    <div
+      className={`min-h-screen ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      } transition-colors duration-200`}
+    >
       {/* Contenu principal */}
       <div className="container mx-auto px-4 pb-6">
         <div
@@ -721,113 +818,213 @@ export default function Reading() {
               className="sticky z-30 bg-transparent"
               style={{ top: `${NAV_H}px` }}
             >
-              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}>
-                <div className="flex items-center gap-2">
-                  <h2 className={`truncate font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex items-center gap-2`}>
-                    {/* Mobile : Livre */}
-                    <button
-                      type="button"
-                      onClick={() => setShowBookPicker(true)}
-                      aria-expanded={showBookPicker}
-                      className={`md:hidden inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 ${
-                        isDark
-                          ? `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                          : `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                      } truncate max-w-[50vw]`}
-                      title={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
-                      aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+              <div
+                className={`${
+                  isDark ? 'bg-gray-800/95' : 'bg-white/95'
+                } backdrop-blur rounded-md shadow md:rounded-lg md:shadow-lg px-3 py-2 md:p-3 mb-2`}
+              >
+                {/* MOBILE: colonne pleine largeur ; DESKTOP: ligne */}
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2 w-full">
+                  {/* Bloc gauche: titre + boutons livre/chapitre */}
+                  <div className="flex flex-col w-full md:w-auto">
+                    <h2
+                      className={`font-semibold ${
+                        isDark ? 'text-white' : 'text-gray-800'
+                      } text-sm md:text-base flex flex-col md:flex-row md:items-center gap-2 w-full`}
                     >
-                      {getBookName(selectedBook)}
-                      <ChevronDown className="w-3 h-3 opacity-90" />
-                    </button>
-
-                    {/* Desktop : nom du livre */}
-                    <span className="hidden md:inline truncate">
-                      {getBookName(selectedBook)} •
-                    </span>
-
-                    {/* Mobile : Chapitre */}
-                    <button
-                      type="button"
-                      onClick={() => setShowChapterPicker(true)}
-                      aria-expanded={showChapterPicker}
-                      className={`md:hidden inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 ${
-                        isDark
-                          ? `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                          : `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                      }`}
-                      title={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
-                      aria-label={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
-                    >
-                      {t('chapter')} {selectedChapter}
-                      <ChevronDown className="w-3 h-3 opacity-90" />
-                    </button>
-
-                    {/* Desktop : "Chapitre N" */}
-                    <span className="hidden md:inline">
-                      {t('chapter')} {selectedChapter}
-                    </span>
-                  </h2>
-
-                  {/* Quick-slots MOBILE */}
-                  <div className="md:hidden ml-auto flex items-center gap-2">
-                    {[0, 1, 2, 3].map((i) => {
-                      const s = quickSlots[i];
-                      const filled = s !== null;
-                      const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
-                      let cls = '';
-                      if (i === 0) {
-                        cls = isDark
-                          ? `border border-blue-400/60 text-blue-200`
-                          : `bg-white border border-blue-300 text-blue-700`;
-                        if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-blue-400';
-                      } else {
-                        const theme = SLOT_THEMES[i as SlotKey];
-                        cls = filled ? `${theme.solid} ${theme.solidHover}` :
-                          (isDark ? 'bg-gray-800 text-white border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
-                        if (activeSlot === i) cls += ` ring-2 ring-offset-1 ${theme.ring}`;
-                      }
-                      const title =
-                        i === 0
-                          ? (s ? `Recherche : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : 'Recherche (vide)')
-                          : (s ? `Mémoire ${i} : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : `Mémoire ${i} (vide)`);
-                      return (
+                      {/* Ligne haute mobile: Livre + Chapitre en pleine largeur */}
+                      <div className="flex w-full items-center gap-2">
+                        {/* Livre (mobile: flex-1) */}
                         <button
-                          key={`qs-m-${i}`}
-                          className={`${base} ${cls}`}
-                          onClick={() => jumpToSlot(i)}
-                          aria-label={title}
-                          title={title}
+                          type="button"
+                          onClick={() => setShowBookPicker(true)}
+                          aria-expanded={showBookPicker}
+                          className={`inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 ${
+                            isDark
+                              ? `${
+                                  activeTheme
+                                    ? activeTheme.mobileBtn
+                                    : 'bg-blue-600 text-white'
+                                } ${
+                                  activeTheme
+                                    ? activeTheme.mobileBtnHover
+                                    : 'hover:bg-blue-500'
+                                } focus:ring-blue-400`
+                              : `${
+                                  activeTheme
+                                    ? activeTheme.mobileBtn
+                                    : 'bg-blue-600 text-white'
+                                } ${
+                                  activeTheme
+                                    ? activeTheme.mobileBtnHover
+                                    : 'hover:bg-blue-500'
+                                } focus:ring-blue-400`
+                          } md:hidden`}
+                          title={
+                            state.settings.language === 'fr'
+                              ? 'Choisir un livre'
+                              : 'Choose a book'
+                          }
+                          aria-label={
+                            state.settings.language === 'fr'
+                              ? 'Choisir un livre'
+                              : 'Choose a book'
+                          }
                         >
-                          {i === 0 ? <SearchIcon className="w-4 h-4" /> : <span>{i}</span>}
+                          <span className="truncate">
+                            {getBookName(selectedBook)}
+                          </span>
+                          <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
-                      );
-                    })}
+
+                        {/* Chapitre (mobile: flex-1) */}
+                        <button
+                          type="button"
+                          onClick={() => setShowChapterPicker(true)}
+                          aria-expanded={showChapterPicker}
+                          className={`inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 ${
+                            isDark
+                              ? `${
+                                  activeTheme
+                                    ? activeTheme.mobileBtn
+                                    : 'bg-blue-600 text-white'
+                                } ${
+                                  activeTheme
+                                    ? activeTheme.mobileBtnHover
+                                    : 'hover:bg-blue-500'
+                                } focus:ring-blue-400`
+                              : `${
+                                  activeTheme
+                                    ? activeTheme.mobileBtn
+                                    : 'bg-blue-600 text-white'
+                                } ${
+                                  activeTheme
+                                    ? activeTheme.mobileBtnHover
+                                    : 'hover:bg-blue-500'
+                                } focus:ring-blue-400`
+                          } md:hidden`}
+                          title={
+                            state.settings.language === 'fr'
+                              ? 'Choisir un chapitre'
+                              : 'Choose a chapter'
+                          }
+                          aria-label={
+                            state.settings.language === 'fr'
+                              ? 'Choisir un chapitre'
+                              : 'Choose a chapter'
+                          }
+                        >
+                          <span className="truncate">
+                            {t('chapter')} {selectedChapter}
+                          </span>
+                          <ChevronDown className="w-3 h-3 opacity-90" />
+                        </button>
+
+                        {/* Bouton loupe + slots 1/2/3 (mobile en wrap si besoin) */}
+                        <div className="flex items-center gap-2 md:hidden">
+                          {[0, 1, 2, 3].map((i) => {
+                            const s = quickSlots[i];
+                            const filled = s !== null;
+                            const base =
+                              'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
+                            let cls = '';
+                            if (i === 0) {
+                              cls = isDark
+                                ? `border border-blue-400/60 text-blue-200`
+                                : `bg-white border border-blue-300 text-blue-700`;
+                              if (lastTappedSlot === 0)
+                                cls +=
+                                  ' ring-2 ring-offset-1 ring-blue-400';
+                            } else {
+                              const theme = SLOT_THEMES[i as SlotKey];
+                              cls = filled
+                                ? `${theme.solid} ${theme.solidHover}`
+                                : isDark
+                                ? 'bg-gray-800 text-white border border-gray-600'
+                                : 'bg-white text-gray-800 border border-gray-300';
+                              if (activeSlot === i)
+                                cls += ` ring-2 ring-offset-1 ${theme.ring}`;
+                            }
+                            const title =
+                              i === 0
+                                ? s
+                                  ? `Recherche : ${s.book} ${s.chapter}${
+                                      s.verse ? ':' + s.verse : ''
+                                    }`
+                                  : 'Recherche (vide)'
+                                : s
+                                ? `Mémoire ${i} : ${s.book} ${s.chapter}${
+                                    s.verse ? ':' + s.verse : ''
+                                  }`
+                                : `Mémoire ${i} (vide)`;
+                            return (
+                              <button
+                                key={`qs-m-${i}`}
+                                className={`${base} ${cls}`}
+                                onClick={() => jumpToSlot(i)}
+                                aria-label={title}
+                                title={title}
+                              >
+                                {i === 0 ? (
+                                  <SearchIcon className="w-4 h-4" />
+                                ) : (
+                                  <span>{i}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Desktop : livre • chapitre */}
+                      <div className="hidden md:flex md:items-center md:gap-2">
+                        <span className="truncate">
+                          {getBookName(selectedBook)} •
+                        </span>
+                        <span>
+                          {t('chapter')} {selectedChapter}
+                        </span>
+                      </div>
+                    </h2>
                   </div>
 
-                  {/* Actions + Quick-slots DESKTOP */}
+                  {/* Desktop : actions à droite */}
                   <div className="hidden md:flex items-center gap-2 ml-auto">
                     <div className="flex items-center gap-2 mr-2">
                       {[0, 1, 2, 3].map((i) => {
                         const s = quickSlots[i];
                         const filled = s !== null;
-                        const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
+                        const base =
+                          'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                         let cls = '';
                         if (i === 0) {
                           cls = isDark
                             ? `border border-blue-400/60 text-blue-200`
                             : `bg-white border border-blue-300 text-blue-700`;
-                          if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-blue-400';
+                          if (lastTappedSlot === 0)
+                            cls += ' ring-2 ring-offset-1 ring-blue-400';
                         } else {
                           const theme = SLOT_THEMES[i as SlotKey];
-                          cls = filled ? `${theme.solid} ${theme.solidHover}` :
-                            (isDark ? 'bg-gray-800 text-white border border-gray-600' : 'bg-white text-gray-800 border border-gray-300');
-                          if (activeSlot === i) cls += ` ring-2 ring-offset-1 ${theme.ring}`;
+                          cls = filled
+                            ? `${theme.solid} ${theme.solidHover}`
+                            : isDark
+                            ? 'bg-gray-800 text-white border border-gray-600'
+                            : 'bg-white text-gray-800 border border-gray-300';
+                          if (activeSlot === i)
+                            cls += ` ring-2 ring-offset-1 ${theme.ring}`;
                         }
                         const title =
                           i === 0
-                            ? (s ? `Recherche : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : 'Recherche (vide)')
-                            : (s ? `Mémoire ${i} : ${s.book} ${s.chapter}${s.verse ? ':' + s.verse : ''}` : `Mémoire ${i} (vide)`);
+                            ? s
+                              ? `Recherche : ${s.book} ${s.chapter}${
+                                  s.verse ? ':' + s.verse : ''
+                                }`
+                              : 'Recherche (vide)'
+                            : s
+                            ? `Mémoire ${i} : ${s.book} ${s.chapter}${
+                                s.verse ? ':' + s.verse : ''
+                              }`
+                            : `Mémoire ${i} (vide)`;
                         return (
                           <button
                             key={`qs-d-${i}`}
@@ -836,7 +1033,11 @@ export default function Reading() {
                             aria-label={title}
                             title={title}
                           >
-                            {i === 0 ? <SearchIcon className="w-4 h-4" /> : <span>{i}</span>}
+                            {i === 0 ? (
+                              <SearchIcon className="w-4 h-4" />
+                            ) : (
+                              <span>{i}</span>
+                            )}
                           </button>
                         );
                       })}
@@ -845,7 +1046,9 @@ export default function Reading() {
                     <button
                       onClick={() => setShowBookPicker(true)}
                       className={`px-3 py-1.5 rounded-md text-sm font-semibold shadow-sm ${
-                        isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'
+                        isDark
+                          ? 'bg-blue-600 text-white hover:bg-blue-500'
+                          : 'bg-blue-600 text-white hover:bg-blue-500'
                       }`}
                     >
                       {state.settings.language === 'fr' ? 'Livres' : 'Books'}
@@ -855,11 +1058,23 @@ export default function Reading() {
                       <button
                         onClick={() => handlePrevUnit()}
                         className={`p-1.5 rounded-md transition-all ${
-                          selectedBook && selectedChapter <= 1 && books.findIndex(b => b.name === selectedBook.name) === 0
-                            ? isDark ? 'bg-gray-700 text-white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                          selectedBook &&
+                          selectedChapter <= 1 &&
+                          books.findIndex(
+                            (b) => b.name === selectedBook.name
+                          ) === 0
+                            ? isDark
+                              ? 'bg-gray-700 text-white/70 cursor-not-allowed'
+                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : isDark
+                            ? 'bg-gray-700 text-white hover:bg-gray-600'
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
-                        title={state.settings.language === 'fr' ? 'Chapitre précédent' : 'Previous chapter'}
+                        title={
+                          state.settings.language === 'fr'
+                            ? 'Chapitre précédent'
+                            : 'Previous chapter'
+                        }
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -867,27 +1082,59 @@ export default function Reading() {
                       <div className="relative">
                         <select
                           value={selectedChapter}
-                          onChange={(e) => handleChapterSelect(Number(e.target.value))}
-                          className={`appearance-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border rounded-md px-3 py-1.5 pr-7 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500`}
-                          title={state.settings.language === 'fr' ? 'Choisir chapitre' : 'Choose chapter'}
+                          onChange={(e) =>
+                            handleChapterSelect(Number(e.target.value))
+                          }
+                          className={`appearance-none ${
+                            isDark
+                              ? 'bg-gray-700 border-gray-600 text-white'
+                              : 'bg-white border-gray-300 text-gray-900'
+                          } border rounded-md px-3 py-1.5 pr-7 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500`}
+                          title={
+                            state.settings.language === 'fr'
+                              ? 'Choisir chapitre'
+                              : 'Choose chapter'
+                          }
                         >
                           {selectedBook
-                            ? Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={num}>{num}</option>
+                            ? Array.from(
+                                { length: selectedBook.chapters },
+                                (_, i) => i + 1
+                              ).map((num) => (
+                                <option key={num} value={num}>
+                                  {num}
+                                </option>
                               ))
                             : null}
                         </select>
-                        <ChevronDown className={`w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-white/80' : 'text-gray-600'}`} />
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 ${
+                            isDark ? 'text-white/80' : 'text-gray-600'
+                          }`}
+                        />
                       </div>
 
                       <button
                         onClick={() => handleNextUnit()}
                         className={`p-1.5 rounded-md transition-all ${
-                          selectedBook && selectedChapter >= selectedBook.chapters && books.findIndex(b => b.name === selectedBook.name) === books.length - 1
-                            ? isDark ? 'bg-gray-700 text-white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
+                          selectedBook &&
+                          selectedChapter >= selectedBook.chapters &&
+                          books.findIndex(
+                            (b) => b.name === selectedBook.name
+                          ) ===
+                            books.length - 1
+                            ? isDark
+                              ? 'bg-gray-700 text-white/70 cursor-not-allowed'
+                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : isDark
+                            ? 'bg-gray-700 text-white hover:bg-gray-600'
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
-                        title={state.settings.language === 'fr' ? 'Chapitre suivant' : 'Next chapter'}
+                        title={
+                          state.settings.language === 'fr'
+                            ? 'Chapitre suivant'
+                            : 'Next chapter'
+                        }
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -904,11 +1151,23 @@ export default function Reading() {
               className="hidden md:block sticky z-40 mb-3"
               style={{ top: `${NAV_H + cmdH + 8}px` }}
             >
-              <div className={`${isDark ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-800 border border-gray-200'} rounded-lg shadow px-4 py-3 flex items-center justify-between`}>
+              <div
+                className={`${
+                  isDark
+                    ? 'bg-gray-800 text-white border border-gray-700'
+                    : 'bg-white text-gray-800 border border-gray-200'
+                } rounded-lg shadow px-4 py-3 flex items-center justify-between`}
+              >
                 <div className="text-sm">
                   {state.settings.language === 'fr'
-                    ? `${selectedVerses.length} verset${selectedVerses.length > 1 ? 's' : ''} sélectionné${selectedVerses.length > 1 ? 's' : ''}`
-                    : `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''} selected`}
+                    ? `${selectedVerses.length} verset${
+                        selectedVerses.length > 1 ? 's' : ''
+                      } sélectionné${
+                        selectedVerses.length > 1 ? 's' : ''
+                      }`
+                    : `${selectedVerses.length} verse${
+                        selectedVerses.length > 1 ? 's' : ''
+                      } selected`}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -927,7 +1186,11 @@ export default function Reading() {
                   </button>
                   <button
                     onClick={() => setSelectedVerses([])}
-                    className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-2 rounded hover:opacity-90`}
+                    className={`${
+                      isDark
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-200 text-gray-700'
+                    } px-3 py-2 rounded hover:opacity-90`}
                   >
                     {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
                   </button>
@@ -938,28 +1201,50 @@ export default function Reading() {
 
           {/* Contenu du chapitre */}
           {selectedBook ? (
-            // Pleine largeur mobile (bordures et padding réduits), espacement vertical resserré
-            <div className={`${isDark ? 'bg-gray-800' : (activeTheme ? activeTheme.lightPaper : 'bg-white')} sm:rounded-xl sm:shadow-lg sm:p-6 p-2 -mx-4 sm:mx-0 min-h-96`}>
+            // Pleine largeur mobile (bordures et padding réduits), espacement vertical optimisé
+            <div
+              className={`${
+                isDark
+                  ? 'bg-gray-800'
+                  : activeTheme
+                  ? activeTheme.lightPaper
+                  : 'bg-white'
+              } sm:rounded-xl sm:shadow-lg sm:p-6 p-2 -mx-4 sm:mx-0 min-h-96`}
+            >
               {loading ? (
                 <div className="flex items-center justify-center py-16">
-                  <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
-                  <span className={`ml-4 text-lg ${isDark ? 'text-white' : 'text-gray-600'}`}>{t('loading')}</span>
+                  <div
+                    className={`animate-spin rounded-full h-12 w-12 border-b-2 ${
+                      isDark ? 'border-blue-400' : 'border-blue-600'
+                    }`}
+                  />
+                  <span
+                    className={`ml-4 text-lg ${
+                      isDark ? 'text-white' : 'text-gray-600'
+                    }`}
+                  >
+                    {t('loading')}
+                  </span>
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Liste des versets — aucun cadrillage, largeur max, espacement serré */}
-                  <div className="space-y-0.5">
+                  {/* Liste des versets */}
+                  <div className="space-y-0">
                     {chapter.verses.map((v) => {
                       const isHighlighted = highlightedVerse === v.verse;
                       const isSelected = selectedVerses.includes(v.verse);
 
-                      const selectedBg = isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : '';
+                      const selectedBg = isSelected
+                        ? isDark
+                          ? 'bg-blue-900/30'
+                          : 'bg-blue-50'
+                        : '';
 
-                      // Surbrillance bleue (cohérente avec bouton indigo)
+                      // Surbrillance bleue cohérente
                       const highlightCls = isHighlighted
-                        ? (isDark
-                            ? 'bg-indigo-500/20 ring-2 ring-indigo-400/80'
-                            : 'bg-indigo-50 ring-2 ring-indigo-300')
+                        ? isDark
+                          ? 'bg-indigo-500/20 ring-2 ring-indigo-400/80'
+                          : 'bg-indigo-50 ring-2 ring-indigo-300'
                         : '';
 
                       return (
@@ -968,20 +1253,41 @@ export default function Reading() {
                           id={`verse-${v.verse}`}
                           onClick={() => toggleSelectVerse(v.verse)}
                           style={{ scrollMarginTop: stickyOffset }}
-                          className={`relative cursor-pointer px-1 sm:px-2 py-1.5 sm:py-2.5 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
+                          className={`relative cursor-pointer px-1 sm:px-2 py-2 sm:py-2.5 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
                         >
                           {/* Libellé "verset N" */}
-                          <span className={`absolute right-2 top-1 sm:top-2 text-xs sm:text-sm select-none pointer-events-none ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
-                            {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
+                          <span
+                            className={`absolute right-2 top-0.5 sm:top-1 text-[11px] sm:text-xs select-none pointer-events-none ${
+                              isDark ? 'text-white/80' : 'text-gray-500'
+                            }`}
+                          >
+                            {state.settings.language === 'fr'
+                              ? 'verset'
+                              : 'verse'}{' '}
+                            {v.verse}
                             {isSelected && (
-                              <Check size={14} className={`inline ml-1 ${isDark ? 'text-blue-300' : 'text-blue-600'}`} />
+                              <Check
+                                size={14}
+                                className={`inline ml-1 ${
+                                  isDark
+                                    ? 'text-blue-300'
+                                    : 'text-blue-600'
+                                }`}
+                              />
                             )}
                           </span>
 
-                          {/* Texte pleine largeur + line-height plus compacte */}
+                          {/* Texte pleine largeur */}
                           <div
-                            className={`${isDark ? 'text-white' : 'text-gray-700'}`}
-                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.5' }}
+                            className={`${
+                              isDark
+                                ? 'text-white'
+                                : 'text-gray-1000 text-gray-700'
+                            }`}
+                            style={{
+                              fontSize: `${state.settings.fontSize}px`,
+                              lineHeight: '1.55',
+                            }}
                           >
                             {v.text}
                           </div>
@@ -991,16 +1297,26 @@ export default function Reading() {
                   </div>
                 </div>
               ) : (
-                <div className={`text-center py-16 ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
+                <div
+                  className={`text-center py-16 ${
+                    isDark ? 'text-white/80' : 'text-gray-500'
+                  }`}
+                >
                   <p className="text-lg mb-2">{t('selectChapter')}</p>
                   <p className="text-sm">
-                    {getBookName(selectedBook)} - {selectedBook.chapters} {t('chapter')}{selectedBook.chapters > 1 ? 's' : ''}
+                    {getBookName(selectedBook)} - {selectedBook.chapters}{' '}
+                    {t('chapter')}
+                    {selectedBook.chapters > 1 ? 's' : ''}
                   </p>
                 </div>
               )}
             </div>
           ) : (
-            <div className={`${isDark ? 'text-white/80' : 'text-gray-500'} text-center py-16`}>
+            <div
+              className={`${
+                isDark ? 'text-white/80' : 'text-gray-500'
+              } text-center py-16`}
+            >
               <Book size={48} className="mx-auto mb-4 opacity-50" />
               <p className="text-lg">{t('selectBook')}</p>
             </div>
@@ -1009,27 +1325,58 @@ export default function Reading() {
           {/* Overlay Livres */}
           {showBookPicker && (
             <div className="fixed inset-0 z-50">
-              <div className="absolute inset-0 bg-black/60" onClick={() => setShowBookPicker(false)} aria-hidden="true" />
-              <div className={`absolute inset-0 ${isDark ? 'bg-gray-900' : 'bg-white'} p-4 overflow-y-auto`}>
+              <div
+                className="absolute inset-0 bg-black/60"
+                onClick={() => setShowBookPicker(false)}
+                aria-hidden="true"
+              />
+              <div
+                className={`absolute inset-0 ${
+                  isDark ? 'bg-gray-900' : 'bg-white'
+                } p-4 overflow-y-auto`}
+              >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    {state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+                  <h3
+                    className={`text-xl font-semibold ${
+                      isDark ? 'text-white' : 'text-gray-800'
+                    }`}
+                  >
+                    {state.settings.language === 'fr'
+                      ? 'Choisir un livre'
+                      : 'Choose a book'}
                   </h3>
-                  <button onClick={() => setShowBookPicker(false)} className={`${isDark ? 'text-white bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}>
+                  <button
+                    onClick={() => setShowBookPicker(false)}
+                    className={`${
+                      isDark
+                        ? 'text-white bg-gray-700'
+                        : 'text-gray-700 bg-gray-200'
+                    } px-3 py-1 rounded`}
+                  >
                     {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
                   </button>
                 </div>
 
-                <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-white/80' : 'text-gray-600'}`}>{t('oldTestament')}</h4>
+                <h4
+                  className={`text-sm uppercase tracking-wide mb-2 ${
+                    isDark ? 'text-white/80' : 'text-gray-600'
+                  }`}
+                >
+                  {t('oldTestament')}
+                </h4>
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-2 mb-6">
-                  {oldTestamentBooks.map(book => (
+                  {oldTestamentBooks.map((book) => (
                     <button
                       key={`ot-${book.name}`}
                       onClick={() => handleBookSelect(book)}
                       className={`w-full inline-block mb-2 break-inside-avoid px-3 py-2 rounded-lg text-sm ${
                         selectedBook?.name === book.name
-                          ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
-                          : isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          ? isDark
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-blue-100 text-blue-800'
+                          : isDark
+                          ? 'bg-gray-800 text-white hover:bg-gray-700'
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
                       {getBookName(book)}
@@ -1037,16 +1384,26 @@ export default function Reading() {
                   ))}
                 </div>
 
-                <h4 className={`text-sm uppercase tracking-wide mb-2 ${isDark ? 'text-white/80' : 'text-gray-600'}`}>{t('newTestament')}</h4>
+                <h4
+                  className={`text-sm uppercase tracking-wide mb-2 ${
+                    isDark ? 'text-white/80' : 'text-gray-600'
+                  }`}
+                >
+                  {t('newTestament')}
+                </h4>
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-2 pb-10">
-                  {newTestamentBooks.map(book => (
+                  {newTestamentBooks.map((book) => (
                     <button
                       key={`nt-${book.name}`}
                       onClick={() => handleBookSelect(book)}
                       className={`w-full inline-block mb-2 break-inside-avoid px-3 py-2 rounded-lg text-sm ${
                         selectedBook?.name === book.name
-                          ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
-                          : isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          ? isDark
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-blue-100 text-blue-800'
+                          : isDark
+                          ? 'bg-gray-800 text-white hover:bg-gray-700'
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
                       {getBookName(book)}
@@ -1060,33 +1417,63 @@ export default function Reading() {
           {/* Overlay Chapitres */}
           {showChapterPicker && selectedBook && (
             <div className="fixed inset-0 z-50">
-              <div className="absolute inset-0 bg-black/60" onClick={() => setShowChapterPicker(false)} aria-hidden="true" />
-              <div className={`absolute inset-0 ${isDark ? 'bg-gray-900' : 'bg-white'} p-4 overflow-y-auto`}>
+              <div
+                className="absolute inset-0 bg-black/60"
+                onClick={() => setShowChapterPicker(false)}
+                aria-hidden="true"
+              />
+              <div
+                className={`absolute inset-0 ${
+                  isDark ? 'bg-gray-900' : 'bg-white'
+                } p-4 overflow-y-auto`}
+              >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    {state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
+                  <h3
+                    className={`text-xl font-semibold ${
+                      isDark ? 'text-white' : 'text-gray-800'
+                    }`}
+                  >
+                    {state.settings.language === 'fr'
+                      ? 'Choisir un chapitre'
+                      : 'Choose a chapter'}
                   </h3>
                   <button
                     onClick={() => setShowChapterPicker(false)}
-                    className={`${isDark ? 'text-white bg-gray-700' : 'text-gray-700 bg-gray-200'} px-3 py-1 rounded`}
+                    className={`${
+                      isDark
+                        ? 'text-white bg-gray-700'
+                        : 'text-gray-700 bg-gray-200'
+                    } px-3 py-1 rounded`}
                   >
                     {state.settings.language === 'fr' ? 'Fermer' : 'Close'}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 pb-10">
-                  {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => {
+                  {Array.from(
+                    { length: selectedBook.chapters },
+                    (_, i) => i + 1
+                  ).map((num) => {
                     const active =
                       num === selectedChapter
-                        ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800')
-                        : (isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200');
+                        ? isDark
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-blue-100 text-blue-800'
+                        : isDark
+                        ? 'bg-gray-800 text-white hover:bg-gray-700'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200';
 
                     return (
                       <button
                         key={`chap-${num}`}
-                        onClick={() => { handleChapterSelect(num); setShowChapterPicker(false); }}
+                        onClick={() => {
+                          handleChapterSelect(num);
+                          setShowChapterPicker(false);
+                        }}
                         className={`h-10 rounded-lg text-sm font-medium ${active}`}
-                        aria-current={num === selectedChapter ? 'page' : undefined}
+                        aria-current={
+                          num === selectedChapter ? 'page' : undefined
+                        }
                       >
                         {num}
                       </button>
@@ -1100,16 +1487,37 @@ export default function Reading() {
           {/* Barre flottante (mobile) */}
           {selectedVerses.length > 0 && (
             <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-              <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
-                <button onClick={copySelection} className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-600 text-white">
+              <div
+                className={`${
+                  isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+                } shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}
+              >
+                <button
+                  onClick={copySelection}
+                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-600 text-white"
+                >
                   <CopyIcon size={16} className="mr-1" />
                   {state.settings.language === 'fr' ? 'Copier' : 'Copy'}
                 </button>
-                <button onClick={shareSelection} className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full inline-flex items-center`}>
+                <button
+                  onClick={shareSelection}
+                  className={`${
+                    isDark
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  } px-3 py-1.5 rounded-full inline-flex items-center`}
+                >
                   <ShareIcon size={16} className="mr-1" />
                   {state.settings.language === 'fr' ? 'Partager' : 'Share'}
                 </button>
-                <button onClick={() => setSelectedVerses([])} className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-1.5 rounded-full`}>
+                <button
+                  onClick={() => setSelectedVerses([])}
+                  className={`${
+                    isDark
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  } px-3 py-1.5 rounded-full`}
+                >
                   {state.settings.language === 'fr' ? 'Annuler' : 'Clear'}
                 </button>
               </div>
@@ -1123,7 +1531,9 @@ export default function Reading() {
                 onClick={pickNewRandom}
                 className="px-3 py-2 rounded-full shadow-lg bg-indigo-600 text-white text-sm active:scale-95"
               >
-                {state.settings.language === 'fr' ? 'Nouveau aléatoire' : 'New random'}
+                {state.settings.language === 'fr'
+                  ? 'Nouveau aléatoire'
+                  : 'New random'}
               </button>
             </div>
           )}
@@ -1131,12 +1541,16 @@ export default function Reading() {
           {/* Toasts */}
           {copiedKey === 'selection' && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow bg-green-600 text-white z-50">
-              {state.settings.language === 'fr' ? 'Sélection copiée' : 'Selection copied'}
+              {state.settings.language === 'fr'
+                ? 'Sélection copiée'
+                : 'Selection copied'}
             </div>
           )}
           {copiedKey === 'shared-fallback' && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow bg-blue-600 text-white z-50">
-              {state.settings.language === 'fr' ? 'Texte prêt à partager (copié)' : 'Text ready to share (copied)'}
+              {state.settings.language === 'fr'
+                ? 'Texte prêt à partager (copié)'
+                : 'Text ready to share (copied)'}
             </div>
           )}
 
