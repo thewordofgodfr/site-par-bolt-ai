@@ -24,10 +24,8 @@ export default function Reading() {
   const { state, dispatch, saveReadingPosition } = useApp();
   const { t } = useTranslation();
 
-  // Hauteur de la nav principale (bandeau du site)
   const NAV_H = 64;
 
-  // Hauteur dynamique du bandeau commandes (mesurée)
   const commandBarRef = useRef<HTMLDivElement>(null);
   const [cmdH, setCmdH] = useState(0);
   useEffect(() => {
@@ -43,19 +41,15 @@ export default function Reading() {
   const [chapter, setChapter] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Mise en évidence
   const [highlightedVerse, setHighlightedVerse] = useState<number | null>(null);
   const [scrollTargetVerse, setScrollTargetVerse] = useState<number | null>(null);
 
-  // Sélection au tap
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [copiedKey, setCopiedKey] = useState<string>('');
 
-  // Overlays
   const [showBookPicker, setShowBookPicker] = useState<boolean>(false);
   const [showChapterPicker, setShowChapterPicker] = useState<boolean>(false);
 
-  // Hint swipe (une seule fois par session) — 3 s
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     const key = `twog:hint:swipe:v4:${state.settings.language}`;
@@ -69,7 +63,6 @@ export default function Reading() {
 
   const isDark = state.settings.theme === 'dark';
 
-  // --- Fix "barre blanche" & débordement horizontal ---
   useEffect(() => {
     const prevBg = document.body.style.backgroundColor;
     const prevOverflowX = document.body.style.overflowX;
@@ -81,22 +74,16 @@ export default function Reading() {
     };
   }, [isDark]);
 
-  // ===== Thèmes couleurs pour slots 1/2/3 =====
   type SlotKey = 1 | 2 | 3;
   const SLOT_THEMES: Record<SlotKey, {
-    solid: string;
-    solidHover: string;
-    ring: string;
-    mobileBtn: string;
-    mobileBtnHover: string;
-    lightPaper: string;
+    solid: string; solidHover: string; ring: string;
+    mobileBtn: string; mobileBtnHover: string; lightPaper: string;
   }> = {
     1: { solid: 'bg-amber-600 text-white', solidHover: 'hover:bg-amber-500', ring: 'ring-amber-400', mobileBtn: 'bg-amber-600 text-white', mobileBtnHover: 'hover:bg-amber-500', lightPaper: 'bg-amber-50' },
     2: { solid: 'bg-violet-600 text-white', solidHover: 'hover:bg-violet-500', ring: 'ring-violet-400', mobileBtn: 'bg-violet-600 text-white', mobileBtnHover: 'hover:bg-violet-500', lightPaper: 'bg-violet-50' },
     3: { solid: 'bg-emerald-600 text-white', solidHover: 'hover:bg-emerald-500', ring: 'ring-emerald-400', mobileBtn: 'bg-emerald-600 text-white', mobileBtnHover: 'hover:bg-emerald-500', lightPaper: 'bg-emerald-50' },
   };
 
-  // ====== Chargement du chapitre ======
   const fetchChapter = async (book: BibleBook, chapterNum: number) => {
     setLoading(true);
     try {
@@ -109,7 +96,6 @@ export default function Reading() {
     }
   };
 
-  // Sauvegarde de la position de scroll du chapitre courant
   const saveScrollForCurrent = () => {
     if (!selectedBook) return;
     try {
@@ -128,7 +114,6 @@ export default function Reading() {
     setHighlightedVerse(null);
     setScrollTargetVerse(null);
     setShowBookPicker(false);
-
     fetchChapter(book, 1);
     saveReadingPosition(book.name, 1);
     try { window.scrollTo({ top: 0 }); } catch {}
@@ -147,7 +132,6 @@ export default function Reading() {
     }
   };
 
-  // Navigation suivante/précédente
   const handleNextUnit = () => {
     if (!selectedBook) return;
     if (selectedChapter < selectedBook.chapters) {
@@ -191,18 +175,15 @@ export default function Reading() {
   const oldTestamentBooks = books.filter(book => book.testament === 'old');
   const newTestamentBooks = books.filter(book => book.testament === 'new');
   const getBookName = (book: BibleBook | null) =>
-    state.settings.language === 'fr'
-      ? (book?.nameFr ?? '')
-      : (book?.nameEn ?? '');
+    state.settings.language === 'fr' ? (book?.nameFr ?? '') : (book?.nameEn ?? '');
 
-  // Nom du livre raccourci à 12 caractères (affichage bouton mobile)
+  // Raccourci plus court pour le mobile
   const shortBookName = (book: BibleBook | null) => {
     const full = getBookName(book);
-    const max = 12;
+    const max = 10; // (était 12)
     return full.length > max ? full.slice(0, max) + '…' : full;
   };
 
-  // Helper pour résoudre un nom de livre
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
     let found = books.find(b => b.name === bookIdentifier);
     if (found) return found;
@@ -213,7 +194,6 @@ export default function Reading() {
     return null;
   };
 
-  // Parse URL params (deep-link)
   function readUrlIntent() {
     try {
       const u = new URL(window.location.href);
@@ -226,13 +206,9 @@ export default function Reading() {
     }
   }
 
-  /* =========================
-     Quick Slots
-     ========================= */
   const [quickSlots, setQuickSlots] = useState<QuickSlot[]>([null, null, null, null]);
-  // 1/2/3 = auto-suivi ; 0 (loupe) n'active jamais l’auto-suivi
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
-  const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null); // 0..3 pour visuel
+  const [lastTappedSlot, setLastTappedSlot] = useState<number | null>(null);
 
   function readAllSlots(): QuickSlot[] { return [0, 1, 2, 3].map(i => readQuickSlot(i)); }
   function refreshSlots() { try { setQuickSlots(readAllSlots()); } catch {} }
@@ -250,11 +226,7 @@ export default function Reading() {
   }, [selectedBook?.name, selectedChapter, activeSlot]);
 
   useEffect(() => {
-    try {
-      if (activeSlot && activeSlot !== 0) {
-        localStorage.setItem('twog:qs:lastActive', String(activeSlot));
-      }
-    } catch {}
+    try { if (activeSlot && activeSlot !== 0) localStorage.setItem('twog:qs:lastActive', String(activeSlot)); } catch {}
   }, [activeSlot]);
 
   function setTapped(i: number) {
@@ -267,7 +239,6 @@ export default function Reading() {
     setTapped(i);
 
     if (i === 0) {
-      // Loupe = surbrillance OK
       setActiveSlot(null);
       if (!slot) return;
       const b = resolveBook(slot.book); if (!b) return;
@@ -282,7 +253,6 @@ export default function Reading() {
       return;
     }
 
-    // Slots 1/2/3 => auto-suivi sans surbrillance
     setActiveSlot(i);
     if (!slot) {
       if (!selectedBook) return;
@@ -294,7 +264,7 @@ export default function Reading() {
     setSelectedBook(book);
     setSelectedChapter(slot.chapter);
     setSelectedVerses([]);
-       setHighlightedVerse(null);
+    setHighlightedVerse(null);
     setScrollTargetVerse(slot.verse ?? null);
     try { window.scrollTo({ top: 0 }); } catch {}
     fetchChapter(book, slot.chapter);
@@ -306,13 +276,11 @@ export default function Reading() {
       ? SLOT_THEMES[activeSlot as SlotKey]
       : null;
 
-  // ===== Navigation contextuelle & restauration =====
   const [hasLoadedContext, setHasLoadedContext] = useState(false);
 
   useEffect(() => {
     if (hasLoadedContext) return;
 
-    // 0) Deep-link via URL ?b=...&c=...&v=...
     const { qb, qc, qv } = readUrlIntent();
     if (qb && qc) {
       const book = resolveBook(qb);
@@ -338,7 +306,6 @@ export default function Reading() {
       }
     }
 
-    // 1) Contexte direct (recherche / verset aléatoire)
     if (state.readingContext && state.readingContext.book && state.readingContext.chapter > 0) {
       const book = resolveBook(state.readingContext.book);
       if (book) {
@@ -357,7 +324,6 @@ export default function Reading() {
       }
     }
 
-    // 1bis) Dernière action = LOUPE
     try {
       const rawTapped = localStorage.getItem('twog:qs:lastTapped');
       if (rawTapped === '0') {
@@ -380,7 +346,6 @@ export default function Reading() {
       }
     } catch {}
 
-    // 1ter) Sinon slot ACTIF 1..3
     try {
       const rawActive = localStorage.getItem('twog:qs:lastActive');
       const i = rawActive ? parseInt(rawActive, 10) : NaN;
@@ -404,7 +369,6 @@ export default function Reading() {
       }
     } catch {}
 
-    // 2) Dernière lecture (fallback)
     const last = state.settings.lastReadingPosition;
     if (last && last.book && last.chapter > 0) {
       const book = resolveBook(last.book);
@@ -420,7 +384,6 @@ export default function Reading() {
       }
     }
 
-    // 3) Première ouverture → John 1
     const john = resolveBook('John');
     if (john) {
       setSelectedBook(john);
@@ -432,7 +395,6 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
 
-  /* ============ Scroll ciblé ============ */
   const suppressAutoSaveUntil = useRef<number>(0);
   const programmaticScrollUntil = useRef<number>(0);
 
@@ -469,7 +431,6 @@ export default function Reading() {
       const v = (scrollTargetVerse ?? highlightedVerse);
       if (v !== null) {
         const isHighlight = highlightedVerse !== null && v === highlightedVerse;
-        // verset surligné légèrement plus bas pour le regard
         scrollToVerseNumber(v, isHighlight, isHighlight ? 38 : 0);
         return;
       }
@@ -497,18 +458,15 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
 
-  // ===== Sélection par tap verset =====
   const toggleSelectVerse = (num: number) => {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
   };
 
-  // Compactage de plages
   const compressRanges = (nums: number[]) => {
     if (nums.length === 0) return '';
     const sorted = [...nums].sort((a, b) => a - b);
     const parts: string[] = [];
-    let start = sorted[0];
-    let prev = sorted[0];
+    let start = sorted[0]; let prev = sorted[0];
     const push = () => (start === prev ? parts.push(`${start}`) : parts.push(`${start}-${prev}`));
     for (let i = 1; i < sorted.length; i++) {
       const n = sorted[i];
@@ -519,60 +477,35 @@ export default function Reading() {
     return parts.join(',');
   };
 
-  // Copie sélection
   const copySelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
-    const chosen = chapter.verses
-      .filter(v => selectedVerses.includes(v.verse))
-      .sort((a, b) => a.verse - b.verse);
-
+    const chosen = chapter.verses.filter(v => selectedVerses.includes(v.verse)).sort((a, b) => a.verse - b.verse);
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
     const body = chosen.map(v => String(v.text)).join('\n');
-
     const payload = ref + '\n' + body;
-
     const ok = await copyToClipboard(payload);
-    if (ok) {
-      setCopiedKey('selection');
-      setTimeout(() => setCopiedKey(''), 1500);
-      setSelectedVerses([]);
-    }
+    if (ok) { setCopiedKey('selection'); setTimeout(() => setCopiedKey(''), 1500); setSelectedVerses([]); }
   };
 
-  // Partage sélection
   const shareSelection = async () => {
     if (!selectedBook || !chapter || selectedVerses.length === 0) return;
-    const chosen = chapter.verses
-      .filter(v => selectedVerses.includes(v.verse))
-      .sort((a, b) => a.verse - b.verse);
-
+    const chosen = chapter.verses.filter(v => selectedVerses.includes(v.verse)).sort((a, b) => a.verse - b.verse);
     const ranges = compressRanges(chosen.map(v => v.verse));
     const ref = getBookName(selectedBook) + ' ' + chapter.chapter + ':' + ranges;
     const body = chosen.map(v => String(v.text)).join('\n');
-
     const shareUrl = 'https://www.theword.fr';
     const shareText = ref + '\n' + body + '\n\n' + shareUrl;
-
     try {
       const nav = navigator as any;
-      if (nav?.share) {
-        await nav.share({ title: ref, text: shareText });
-        setSelectedVerses([]);
-      } else {
+      if (nav?.share) { await nav.share({ title: ref, text: shareText }); setSelectedVerses([]); }
+      else {
         const ok = await copyToClipboard(shareText);
-        if (ok) {
-          setCopiedKey('shared-fallback');
-          setTimeout(() => setCopiedKey(''), 1800);
-          setSelectedVerses([]);
-        }
+        if (ok) { setCopiedKey('shared-fallback'); setTimeout(() => setCopiedKey(''), 1800); setSelectedVerses([]); }
       }
-    } catch (e) {
-      console.error('share error', e);
-    }
+    } catch (e) { console.error('share error', e); }
   };
 
-  /* ===== Gestes : gauche/droite ===== */
   const swipeStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -581,7 +514,6 @@ export default function Reading() {
     swipeStart.current = { x: t.clientX, y: t.clientY, time: Date.now() };
     swipeHandled.current = false;
   };
-
   const onTouchMove = (e: React.TouchEvent) => {
     if (!swipeStart.current || swipeHandled.current || loading || !selectedBook) return;
     const t = e.touches[0];
@@ -589,23 +521,15 @@ export default function Reading() {
     const dy = t.clientY - swipeStart.current.y;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
-
     if (absDx > 60 && absDx > absDy * 1.4) {
       swipeHandled.current = true;
-      if (dx < 0) handleNextUnit();
-      else handlePrevUnit();
+      if (dx < 0) handleNextUnit(); else handlePrevUnit();
     }
   };
+  const onTouchEnd = () => { swipeStart.current = null; swipeHandled.current = false; };
 
-  const onTouchEnd = () => {
-    swipeStart.current = null;
-    swipeHandled.current = false;
-  };
-
-  // Offset sticky total pour "scroll-margin"
   const stickyOffset = NAV_H + cmdH + 12;
 
-  /* ===== Détection ancrage + (CTA aléatoire désactivé) ===== */
   const scrollDebounce = useRef<number | null>(null);
   const [showBottomRandom, setShowBottomRandom] = useState(false);
   useEffect(() => {
@@ -625,12 +549,10 @@ export default function Reading() {
             if (top - offset <= 0) bestVerse = v.verse;
             else break;
           }
-
           if (activeSlot && activeSlot !== 0) {
             saveQuickSlot(activeSlot, { book: selectedBook.name, chapter: selectedChapter, verse: bestVerse });
             refreshSlots();
           }
-
           const nearBottom =
             window.innerHeight + (window.scrollY || document.documentElement.scrollTop || 0)
             >= (document.documentElement.scrollHeight || document.body.scrollHeight) - 180;
@@ -647,16 +569,12 @@ export default function Reading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
-  // Nouveau verset aléatoire
   const pickNewRandom = async () => {
     try {
       const v = await getRandomVerse(state.settings.language);
       if (!v) return;
-
       saveQuickSlot(0, { book: v.book, chapter: v.chapter, verse: v.verse });
-
       const b = resolveBook(v.book); if (!b) return;
-
       setSelectedBook(b);
       setSelectedChapter(v.chapter);
       setSelectedVerses([]);
@@ -664,69 +582,58 @@ export default function Reading() {
       setScrollTargetVerse(v.verse);
       setTapped(0);
       setActiveSlot(null);
-
       fetchChapter(b, v.chapter);
       saveReadingPosition(b.name, v.chapter);
       setShowBottomRandom(false);
-
       try { window.scrollTo({ top: 0 }); } catch {}
-    } catch (e) {
-      console.error('random error', e);
-    }
+    } catch (e) { console.error('random error', e); }
   };
 
-  // ====== Rendu
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
       <div className="container mx-auto px-4 pb-6">
         <div className="max-w-6xl mx-auto">
-          {/* Bandeau sticky — PLEIN ÉCRAN (mêmes bords que le header) */}
           {selectedBook && (
-            <div
-              ref={commandBarRef}
-              className="sticky z-40 -mx-4 sm:mx-0"
-              style={{ top: `${NAV_H}px` }}
-            >
-              <div
-                className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} rounded-none sm:rounded-md shadow md:shadow-lg px-4 py-2 md:p-3`}
-              >
+            <div ref={commandBarRef} className="sticky z-40 -mx-4 sm:mx-0" style={{ top: `${NAV_H}px` }}>
+              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} rounded-none sm:rounded-md shadow md:shadow-lg px-4 py-2 md:p-3`}>
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2 w-full">
-                  {/* Bloc gauche : livre/chapitre */}
                   <div className="flex flex-col w-full md:w-auto">
                     <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex flex-col md:flex-row md:items-center gap-2 w-full`}>
-                      {/* Ligne haute mobile: Livre + Chapitre */}
                       <div className="flex w-full items-center gap-2 overflow-hidden">
-                        {/* Livre (mobile) — largeur visuelle fixe: 12ch */}
+                        {/* Livre (mobile) — réduit pour laisser la place au chapitre */}
                         <button
                           type="button"
                           onClick={() => setShowBookPicker(true)}
                           aria-expanded={showBookPicker}
-                          className={`min-w-0 inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 md:hidden ${
+                          className={`min-w-0 inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 md:hidden ${
                             isDark
                               ? `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
                               : `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
-                          }`}
+                          } flex-1`}
                           title={getBookName(selectedBook)}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
                         >
-                          <span className="truncate w-[12ch]">{shortBookName(selectedBook)}</span>
+                          <span className="truncate w-[9ch]">{shortBookName(selectedBook)}</span>
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
-                        {/* Chapitre (mobile) */}
+                        {/* Chapitre (mobile) — jamais tronqué, prioritaire */}
                         <button
                           type="button"
                           onClick={() => setShowChapterPicker(true)}
                           aria-expanded={showChapterPicker}
-                          className={`min-w-0 inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 md:hidden ${
+                          className={`min-w-0 inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 md:hidden ${
                             isDark
                               ? `${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtn ?? 'bg-blue-600 text-white') : 'bg-blue-600 text-white'} ${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtnHover ?? '') : 'hover:bg-blue-500'} focus:ring-blue-400`
                               : `${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtn ?? 'bg-blue-600 text-white') : 'bg-blue-600 text-white'} ${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtnHover ?? '') : 'hover:bg-blue-500'} focus:ring-blue-400`
-                          }`}
+                          } flex-none shrink-0 whitespace-nowrap`}
                           title={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
                         >
-                          <span className="truncate">{t('chapter')} {selectedChapter}</span>
+                          <span className="truncate">
+                            <span className="md:hidden">Ch.</span>
+                            <span className="hidden md:inline">{t('chapter')}</span> {selectedChapter}
+                          </span>
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
@@ -738,8 +645,12 @@ export default function Reading() {
                             const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                             let cls = '';
                             if (i === 0) {
-                              cls = isDark ? `border border-blue-400/60 text-blue-200` : `bg-white border border-blue-300 text-blue-700`;
-                              if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-blue-400';
+                              // colorer en bleu quand page loupe active
+                              if (lastTappedSlot === 0) {
+                                cls = 'bg-blue-600 text-white hover:bg-blue-500';
+                              } else {
+                                cls = isDark ? 'border border-blue-400/60 text-blue-200' : 'bg-white border border-blue-300 text-blue-700';
+                              }
                             } else {
                               const theme = SLOT_THEMES[i as SlotKey];
                               cls = filled ? `${theme.solid} ${theme.solidHover}` :
@@ -776,8 +687,11 @@ export default function Reading() {
                         const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                         let cls = '';
                         if (i === 0) {
-                          cls = isDark ? `border border-blue-400/60 text-blue-200` : `bg-white border border-blue-300 text-blue-700`;
-                          if (lastTappedSlot === 0) cls += ' ring-2 ring-offset-1 ring-blue-400';
+                          if (lastTappedSlot === 0) {
+                            cls = 'bg-blue-600 text-white hover:bg-blue-500';
+                          } else {
+                            cls = isDark ? 'border border-blue-400/60 text-blue-200' : 'bg-white border border-blue-300 text-blue-700';
+                          }
                         } else {
                           const theme = SLOT_THEMES[i as SlotKey];
                           cls = filled ? `${theme.solid} ${theme.solidHover}` :
@@ -850,7 +764,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Barre d'action — desktop/tablette */}
           {selectedVerses.length > 0 && (
             <div className="hidden md:block sticky z-40 mb-3" style={{ top: `${NAV_H + cmdH + 8}px` }}>
               <div className={`${isDark ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-800 border border-gray-200'} rounded-lg shadow px-4 py-3 flex items-center justify-between`}>
@@ -876,9 +789,7 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Contenu du chapitre (zone de swipe uniquement ici) */}
           {selectedBook ? (
-            // Fond fixe — PLEIN ÉCRAN sous le header (mêmes bords que le bandeau)
             <div
               className={`${isDark ? 'bg-gray-800' : 'bg-white'} -mx-4 sm:mx-0 sm:rounded-xl sm:shadow-lg px-4 py-2 sm:p-6 min-h-96`}
               onTouchStart={onTouchStart}
@@ -893,17 +804,14 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Liste des versets */}
                   <div className="space-y-0">
                     {chapter.verses.map((v) => {
                       const isHighlighted = highlightedVerse === v.verse;
                       const isSelected = selectedVerses.includes(v.verse);
-
                       const selectedBg = isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : '';
                       const highlightCls = isHighlighted
                         ? (isDark ? 'bg-indigo-500/20 ring-2 ring-indigo-400/80' : 'bg-indigo-50 ring-2 ring-indigo-300')
                         : '';
-
                       return (
                         <div
                           key={v.verse}
@@ -912,19 +820,11 @@ export default function Reading() {
                           style={{ scrollMarginTop: stickyOffset }}
                           className={`relative cursor-pointer px-1 sm:px-2 py-2 sm:py-2.5 rounded-md transition-colors ${selectedBg} ${highlightCls}`}
                         >
-                          {/* Libellé "verset N" */}
                           <span className={`absolute right-2 top-0.5 sm:top-1 text-[11px] sm:text-xs select-none pointer-events-none ${isDark ? 'text-white/80' : 'text-gray-500'}`}>
                             {state.settings.language === 'fr' ? 'verset' : 'verse'} {v.verse}
-                            {isSelected && (
-                              <Check size={14} className={`inline ml-1 ${isDark ? 'text-blue-300' : 'text-blue-600'}`} />
-                            )}
+                            {isSelected && <Check size={14} className={`inline ml-1 ${isDark ? 'text-blue-300' : 'text-blue-600'}`} />}
                           </span>
-
-                          {/* Texte pleine largeur */}
-                          <div
-                            className={`${isDark ? 'text-white' : 'text-gray-700'}`}
-                            style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.55' }}
-                          >
+                          <div className={`${isDark ? 'text-white' : 'text-gray-700'}`} style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: '1.55' }}>
                             {v.text}
                           </div>
                         </div>
@@ -948,7 +848,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Overlay Livres */}
           {showBookPicker && (
             <div className="fixed inset-0 z-50">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowBookPicker(false)} aria-hidden="true" />
@@ -999,7 +898,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Overlay Chapitres */}
           {showChapterPicker && selectedBook && (
             <div className="fixed inset-0 z-50">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowChapterPicker(false)} aria-hidden="true" />
@@ -1036,7 +934,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Barre flottante (mobile) */}
           {selectedVerses.length > 0 && (
             <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
               <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'} shadow-lg rounded-full px-3 py-2 flex items-center space-x-2`}>
@@ -1055,7 +952,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* CTA aléatoire en bas — désactivé mais conservé */}
           {false && showBottomRandom && (
             <div className="fixed bottom-4 right-4 z-40 sm:right-6 sm:bottom-6">
               <button onClick={pickNewRandom} className="px-3 py-2 rounded-full shadow-lg bg-indigo-600 text-white text-sm active:scale-95">
@@ -1064,7 +960,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Toasts */}
           {copiedKey === 'selection' && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded text-sm shadow bg-green-600 text-white z-50">
               {state.settings.language === 'fr' ? 'Sélection copiée' : 'Selection copied'}
@@ -1076,7 +971,6 @@ export default function Reading() {
             </div>
           )}
 
-          {/* Hint swipe */}
           {showSwipeHint && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
               <div className="w-1/2 max-w-xs text-center px-4 py-3 rounded-2xl text-base font-bold shadow-2xl ring-2 ring-blue-200 bg-blue-600/95 text-white flex items-center justify-center">
@@ -1091,4 +985,5 @@ export default function Reading() {
     </div>
   );
 }
+
 
