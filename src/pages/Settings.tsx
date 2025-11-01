@@ -20,7 +20,7 @@ export default function Settings() {
   // UI forcée en sombre
   const isDark = true;
 
-  // Tailles (du plus petit au plus grand, affichées sur 2 rangées)
+  // Tailles (du plus petit au plus grand)
   const fontSizes = [21, 23, 25, 27];
 
   // --- Gestion mise à jour (SW) ---
@@ -55,7 +55,6 @@ export default function Settings() {
       const previousWaiting = reg.waiting || null;
       await reg.update(); // force un check de MAJ
 
-      // Laisse le SW s’installer s’il existe
       setTimeout(() => {
         if (reg.waiting && reg.waiting !== previousWaiting) {
           setWaitingSW(reg.waiting);
@@ -97,21 +96,40 @@ export default function Settings() {
             </h2>
 
             <div className="space-y-4">
+              {/* FR */}
               <button
                 onClick={() => updateSettings({ language: 'fr' })}
                 className={`w-full flex items-center justify-between px-6 py-4 rounded-xl border-2 transition-all duration-200 ${
                   state.settings.language === 'fr'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-blue-500 bg-blue-50'
                     : isDark
-                    ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
-                    : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                    ? 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                    : 'border-gray-300 bg-gray-50 hover:border-gray-400'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">🇫🇷</span>
                   <div className="text-left">
-                    <div className="font-semibold">Français</div>
-                    <div className={`${isDark ? 'text-white/80' : 'text-gray-600'} text-sm`}>
+                    <div
+                      className={`font-semibold ${
+                        state.settings.language === 'fr'
+                          ? 'text-blue-900'
+                          : isDark
+                          ? 'text-white'
+                          : 'text-gray-800'
+                      }`}
+                    >
+                      Français
+                    </div>
+                    <div
+                      className={`text-sm ${
+                        state.settings.language === 'fr'
+                          ? 'text-blue-700'
+                          : isDark
+                          ? 'text-white/80'
+                          : 'text-gray-600'
+                      }`}
+                    >
                       Louis Segond 1910 révision 2025
                     </div>
                   </div>
@@ -119,33 +137,46 @@ export default function Settings() {
                 {state.settings.language === 'fr' && <div className="w-3 h-3 bg-blue-500 rounded-full" />}
               </button>
 
+              {/* EN */}
               <button
                 onClick={() => updateSettings({ language: 'en' })}
                 className={`w-full flex items-center justify-between px-6 py-4 rounded-xl border-2 transition-all duration-200 ${
                   state.settings.language === 'en'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-blue-500 bg-blue-50'
                     : isDark
-                    ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
-                    : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                    ? 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                    : 'border-gray-300 bg-gray-50 hover:border-gray-400'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">🇺🇸</span>
                   <div className="text-left">
-                    <div className="font-semibold">English</div>
-                    <div className={`${isDark ? 'text-white/80' : 'text-gray-600'} text-sm`}>King James Version</div>
+                    <div
+                      className={`font-semibold ${
+                        state.settings.language === 'en'
+                          ? 'text-blue-900'
+                          : isDark
+                          ? 'text-white'
+                          : 'text-gray-800'
+                      }`}
+                    >
+                      English
+                    </div>
+                    <div
+                      className={`text-sm ${
+                        state.settings.language === 'en'
+                          ? 'text-blue-700'
+                          : isDark
+                          ? 'text-white/80'
+                          : 'text-gray-600'
+                      }`}
+                    >
+                      King James Version
+                    </div>
                   </div>
                 </div>
                 {state.settings.language === 'en' && <div className="w-3 h-3 bg-blue-500 rounded-full" />}
               </button>
-            </div>
-
-            <div className={`mt-6 p-4 ${isDark ? 'bg-gray-700' : 'bg-blue-50'} rounded-lg`}>
-              <p className={`text-sm ${isDark ? 'text-white/90' : 'text-blue-700'}`}>
-                {state.settings.language === 'fr'
-                  ? 'La langue est détectée automatiquement selon votre navigateur, mais vous pouvez la changer manuellement.'
-                  : 'Language is automatically detected based on your browser, but you can change it manually.'}
-              </p>
             </div>
           </div>
 
@@ -214,7 +245,10 @@ export default function Settings() {
 
           {/* 3) Raccourcis de lecture */}
           <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6`}>
-            {/* (Titre interne supprimé ici pour éviter le doublon — QuickSlotsHelp peut afficher le sien) */}
+            {/* Titre externe conservé pour homogénéité des cartes : */}
+            <h2 className={`text-xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              {state.settings.language === 'fr' ? 'Raccourcis de lecture' : 'Reading shortcuts'}
+            </h2>
             <div
               className={`${isDark ? 'text-white' : 'text-gray-800'} w-full text-base leading-relaxed 
               [&>*]:w-full [&_*]:max-w-none`}
