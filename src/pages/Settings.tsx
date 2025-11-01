@@ -1,10 +1,10 @@
 // src/pages/Settings.tsx
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import QuickSlotsHelp from '../components/QuickSlotsHelp';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { Sun, Moon, Type, Globe, Palette } from 'lucide-react';
+import { Globe, Palette, RefreshCcw } from 'lucide-react';
 
 export default function Settings() {
   const { state, updateSettings } = useApp();
@@ -17,16 +17,70 @@ export default function Settings() {
     }
   }, [state.settings.theme, updateSettings]);
 
-  // UI forcée en sombre (on garde la logique pour réactiver plus tard si besoin)
+  // UI forcée en sombre
   const isDark = true;
 
-  // Tailles en partant du plus grand + bouton "malvoyant (XL)"
-  const fontSizes = [
-    { label: '26px', value: 26 },
-    { label: '24px', value: 24 },
-    { label: '22px', value: 22 },
-    { label: '20px', value: 20 },
-  ];
+  // Nouvelles tailles (3 rangées, du plus petit au plus grand)
+  const fontSizes = [21, 23, 25, 27, 29];
+
+  // --- Gestion mise à jour (SW) ---
+  const [updateStatus, setUpdateStatus] = useState<
+    'idle' | 'checking' | 'ready' | 'upToDate' | 'unavailable' | 'error'
+  >('idle');
+  const [waitingSW, setWaitingSW] = useState<ServiceWorker | null>(null);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onControllerChange = () => {
+      // Quand le nouveau SW prend le contrôle -> rechargement propre
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+  }, []);
+
+  const handleCheckUpdates = async () => {
+    if (!('serviceWorker' in navigator)) {
+      setUpdateStatus('unavailable');
+      return;
+    }
+    try {
+      setUpdateStatus('checking');
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        setUpdateStatus('unavailable');
+        return;
+      }
+
+      const previousWaiting = reg.waiting || null;
+
+      await reg.update(); // force un check de MAJ
+
+      // Petite fenêtre pour laisser le SW se télécharger/installer s'il existe
+      setTimeout(() => {
+        if (reg.waiting && reg.waiting !== previousWaiting) {
+          setWaitingSW(reg.waiting);
+          setUpdateStatus('ready');
+        } else {
+          // Pas de worker en attente détecté, on considère à jour
+          setUpdateStatus('upToDate');
+        }
+      }, 800);
+    } catch {
+      setUpdateStatus('error');
+    }
+  };
+
+  const applyUpdate = () => {
+    if (waitingSW) {
+      // Demande au SW d'activer tout de suite (si implémenté côté SW)
+      waitingSW.postMessage({ type: 'SKIP_WAITING' });
+      // Si le SW ne traite pas ce message, on force un reload de secours
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      window.location.reload();
+    }
+  };
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
@@ -40,98 +94,45 @@ export default function Settings() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Appearance Settings */}
+            {/* Apparence (sombre forcé) + Taille de police */}
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
                 <Palette size={24} className="mr-3" />
                 {t('appearance')}
               </h2>
 
-              {/* Note : Mode sombre forcé */}
-              <div
-                className={`mb-8 p-4 rounded-lg border ${
-                  isDark ? 'border-gray-700 bg-gray-700/60' : 'border-gray-200 bg-gray-50'
-                }`}
-              >
-                <p className={`${isDark ? 'text-white' : 'text-gray-800'} font-medium`}>
-                  {state.settings.language === 'fr'
-                    ? 'Mode sombre activé en permanence.'
-                    : 'Dark mode is permanently enabled.'}
-                </p>
-                <p className={`${isDark ? 'text-white/70' : 'text-gray-600'} text-sm mt-1`}>
-                  {state.settings.language === 'fr'
-                    ? "L’option de changement de thème est cachée pour l’instant (code conservé)."
-                    : 'Theme toggle is hidden for now (code kept).'}
-                </p>
-              </div>
-
-              {/* ====== [CONSERVÉ POUR RÉACTIVATION FUTURE] Sélecteur de thème ====== 
-                  Pour réactiver : supprime ce bloc de commentaires */}
-              {/*
-              <div className="mb-8">
-                <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                  {state.settings.language === 'fr' ? "Mode d'affichage" : 'Display mode'}
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => updateSettings({ theme: 'light' })}
-                    className={`flex items-center justify-center space-x-3 px-4 py-6 rounded-xl border-2 transition-all duration-200 ${
-                      state.settings.theme === 'light'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : isDark
-                        ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
-                        : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <Sun size={24} />
-                    <span className="font-medium">{t('lightMode')}</span>
-                  </button>
-                  <button
-                    onClick={() => updateSettings({ theme: 'dark' })}
-                    className={`flex items-center justify-center space-x-3 px-4 py-6 rounded-xl border-2 transition-all duration-200 ${
-                      state.settings.theme === 'dark'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : isDark
-                        ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
-                        : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <Moon size={24} />
-                    <span className="font-medium">{t('darkMode')}</span>
-                  </button>
-                </div>
-              </div>
-              */}
-              {/* ====== FIN sélecteur de thème conservé ====== */}
-
-              {/* Font Size */}
+              {/* Taille de police */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'} flex items-center`}
-                >
-                  <Type size={16} className="mr-2" />
-                  {t('fontSize')}
-                </label>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {fontSizes.map(({ label, value }) => (
-                    <button
-                      key={value}
-                      onClick={() => updateSettings({ fontSize: value })}
-                      className={`px-4 py-3 rounded-lg border-2 font-medium transition-all duration-200 ${
-                        state.settings.fontSize === value
-                          ? 'border-green-500 bg-green-50 text-green-700'
-                          : isDark
-                          ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
-                          : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  {state.settings.language === 'fr' ? 'Taille de police' : 'Font size'}
                 </div>
 
-                {/* Bouton “Malvoyant (XL)” */}
+                <div className="grid grid-cols-2 gap-3">
+                  {fontSizes.map((value, idx) => {
+                    const isSelected = state.settings.fontSize === value;
+                    const isLastOdd = fontSizes.length % 2 === 1 && idx === fontSizes.length - 1;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => updateSettings({ fontSize: value })}
+                        aria-pressed={isSelected}
+                        className={`${
+                          isLastOdd ? 'col-span-2' : ''
+                        } px-4 py-3 rounded-lg border-2 font-medium transition-all duration-200 ${
+                          isSelected
+                            ? 'border-green-500 bg-green-50 text-green-700'
+                            : isDark
+                            ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
+                            : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                        }`}
+                      >
+                        {value}px
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Mode Malvoyant (XL) */}
                 <div className="mt-4">
                   <button
                     onClick={() => updateSettings({ fontSize: 36 })}
@@ -141,16 +142,11 @@ export default function Settings() {
                         : 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400'
                     }`}
                   >
-                    {state.settings.language === 'fr' ? 'Mode malvoyant (XL)' : 'Low-vision mode (XL)'}
+                    {state.settings.language === 'fr' ? 'Mode Malvoyant (XL)' : 'Low-vision mode (XL)'}
                   </button>
-                  <p className={`${isDark ? 'text-white/70' : 'text-gray-600'} text-xs mt-2`}>
-                    {state.settings.language === 'fr'
-                      ? 'Règle la taille de police à ~36px pour un confort maximal.'
-                      : 'Sets font size to ~36px for maximum comfort.'}
-                  </p>
                 </div>
 
-                {/* Font Size Preview */}
+                {/* Aperçu */}
                 <div className={`mt-4 p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg`}>
                   <p
                     className={`${isDark ? 'text-white' : 'text-gray-700'}`}
@@ -164,7 +160,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Language Settings */}
+            {/* Langue */}
             <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
                 <Globe size={24} className="mr-3" />
@@ -213,13 +209,88 @@ export default function Settings() {
                 </button>
               </div>
 
-              {/* Language Info */}
               <div className={`mt-6 p-4 ${isDark ? 'bg-gray-700' : 'bg-blue-50'} rounded-lg`}>
                 <p className={`text-sm ${isDark ? 'text-white/90' : 'text-blue-700'}`}>
                   {state.settings.language === 'fr'
                     ? 'La langue est détectée automatiquement selon votre navigateur, mais vous pouvez la changer manuellement.'
                     : 'Language is automatically detected based on your browser, but you can change it manually.'}
                 </p>
+              </div>
+            </div>
+
+            {/* Mises à jour (largeur 2 colonnes) */}
+            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 md:col-span-2`}>
+              <h2 className={`text-xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-gray-800'} flex items-center`}>
+                <RefreshCcw size={22} className="mr-3" />
+                {state.settings.language === 'fr' ? 'Mises à jour' : 'Updates'}
+              </h2>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className={`${isDark ? 'text-white/80' : 'text-gray-700'} text-sm`}>
+                  {state.settings.language === 'fr'
+                    ? "Vérifie s'il existe une nouvelle version de l'application et applique-la."
+                    : 'Check if a new version is available and apply it.'}
+                </div>
+
+                <div className="flex gap-3">
+                  {updateStatus === 'ready' ? (
+                    <button
+                      onClick={applyUpdate}
+                      className="px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 border-green-500 bg-green-50 text-green-700"
+                    >
+                      {state.settings.language === 'fr' ? 'Appliquer la mise à jour' : 'Apply update'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleCheckUpdates}
+                      disabled={updateStatus === 'checking'}
+                      className={`px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${
+                        updateStatus === 'checking'
+                          ? 'opacity-70 cursor-wait border-gray-500 text-gray-300'
+                          : isDark
+                          ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
+                          : 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      {state.settings.language === 'fr' ? 'Vérifier les mises à jour' : 'Check for updates'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Statut */}
+              <div className="mt-4 text-sm">
+                {updateStatus === 'checking' && (
+                  <p className={isDark ? 'text-white/80' : 'text-gray-700'}>
+                    {state.settings.language === 'fr' ? 'Vérification en cours…' : 'Checking…'}
+                  </p>
+                )}
+                {updateStatus === 'upToDate' && (
+                  <p className="text-green-500">
+                    {state.settings.language === 'fr' ? "Votre application est à jour." : 'Your app is up to date.'}
+                  </p>
+                )}
+                {updateStatus === 'ready' && (
+                  <p className="text-yellow-400">
+                    {state.settings.language === 'fr'
+                      ? 'Nouvelle version prête. Cliquez sur « Appliquer la mise à jour ».'
+                      : 'New version ready. Click “Apply update”.'}
+                  </p>
+                )}
+                {updateStatus === 'unavailable' && (
+                  <p className="text-red-400">
+                    {state.settings.language === 'fr'
+                      ? "Mise à jour automatique indisponible (Service Worker non détecté)."
+                      : 'Automatic update unavailable (No Service Worker).'}
+                  </p>
+                )}
+                {updateStatus === 'error' && (
+                  <p className="text-red-400">
+                    {state.settings.language === 'fr'
+                      ? 'Erreur lors de la vérification. Réessayez.'
+                      : 'Error while checking. Please try again.'}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -229,7 +300,7 @@ export default function Settings() {
             <QuickSlotsHelp />
           </div>
 
-          {/* Settings Info */}
+          {/* Info */}
           <div className={`mt-8 ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}>
             <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
               {state.settings.language === 'fr' ? 'Informations' : 'Information'}
@@ -245,3 +316,4 @@ export default function Settings() {
     </div>
   );
 }
+
