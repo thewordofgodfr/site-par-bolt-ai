@@ -177,10 +177,10 @@ export default function Reading() {
   const getBookName = (book: BibleBook | null) =>
     state.settings.language === 'fr' ? (book?.nameFr ?? '') : (book?.nameEn ?? '');
 
-  // Raccourci plus court pour le mobile
+  // *** Show more characters on mobile ***
   const shortBookName = (book: BibleBook | null) => {
     const full = getBookName(book);
-    const max = 10; // (était 12)
+    const max = 14; // <- was 10; allow longer names before ellipsis
     return full.length > max ? full.slice(0, max) + '…' : full;
   };
 
@@ -222,7 +222,6 @@ export default function Reading() {
         refreshSlots();
       } catch {}
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBook?.name, selectedChapter, activeSlot]);
 
   useEffect(() => {
@@ -392,7 +391,6 @@ export default function Reading() {
       try { window.scrollTo({ top: 0 }); } catch {}
       setHasLoadedContext(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.readingContext, books, hasLoadedContext, dispatch, state.settings.lastReadingPosition]);
 
   const suppressAutoSaveUntil = useRef<number>(0);
@@ -455,7 +453,6 @@ export default function Reading() {
 
     const t = setTimeout(doScroll, 50);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
 
   const toggleSelectVerse = (num: number) => {
@@ -566,7 +563,6 @@ export default function Reading() {
       window.removeEventListener('scroll', onScroll);
       if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
   const pickNewRandom = async () => {
@@ -597,10 +593,10 @@ export default function Reading() {
             <div ref={commandBarRef} className="sticky z-40 -mx-4 sm:mx-0" style={{ top: `${NAV_H}px` }}>
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} rounded-none sm:rounded-md shadow md:shadow-lg px-4 py-2 md:p-3`}>
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2 w-full">
-                  <div className="flex flex-col w-full md:w-auto">
+                  <div className="flex flex-col w/full md:w-auto">
                     <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex flex-col md:flex-row md:items-center gap-2 w-full`}>
                       <div className="flex w-full items-center gap-2 overflow-hidden">
-                        {/* Livre (mobile) — réduit pour laisser la place au chapitre */}
+                        {/* Livre (mobile) — allow more characters */}
                         <button
                           type="button"
                           onClick={() => setShowBookPicker(true)}
@@ -613,11 +609,12 @@ export default function Reading() {
                           title={getBookName(selectedBook)}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
                         >
-                          <span className="truncate w-[9ch]">{shortBookName(selectedBook)}</span>
+                          {/* <-- change here if you want even more: w-[13ch] */}
+                          <span className="truncate w-[13ch]">{shortBookName(selectedBook)}</span>
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
-                        {/* Chapitre (mobile) — jamais tronqué, prioritaire */}
+                        {/* Chapitre (mobile) — fixed width, priority */}
                         <button
                           type="button"
                           onClick={() => setShowChapterPicker(true)}
@@ -645,7 +642,6 @@ export default function Reading() {
                             const base = 'px-3 py-1.5 rounded-full text-xs font-semibold shadow active:scale-95 inline-flex items-center gap-1';
                             let cls = '';
                             if (i === 0) {
-                              // colorer en bleu quand page loupe active
                               if (lastTappedSlot === 0) {
                                 cls = 'bg-blue-600 text-white hover:bg-blue-500';
                               } else {
@@ -722,7 +718,7 @@ export default function Reading() {
                         onClick={() => handlePrevUnit()}
                         className={`p-1.5 rounded-md transition-all ${
                           selectedBook && selectedChapter <= 1 && books.findIndex(b => b.name === selectedBook.name) === 0
-                            ? isDark ? 'bg-gray-700 text-white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            ? isDark ? 'bg-gray-700 text.white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
                         title={state.settings.language === 'fr' ? 'Chapitre précédent' : 'Previous chapter'}
@@ -750,7 +746,7 @@ export default function Reading() {
                         onClick={() => handleNextUnit()}
                         className={`p-1.5 rounded-md transition-all ${
                           selectedBook && selectedChapter >= selectedBook.chapters && books.findIndex(b => b.name === selectedBook.name) === books.length - 1
-                            ? isDark ? 'bg-gray-700 text-white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            ? isDark ? 'bg-gray-700 text.white/70 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                         }`}
                         title={state.settings.language === 'fr' ? 'Chapitre suivant' : 'Next chapter'}
@@ -985,5 +981,4 @@ export default function Reading() {
     </div>
   );
 }
-
 
