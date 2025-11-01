@@ -214,10 +214,13 @@ export default function Settings() {
 
           {/* 3) Raccourcis de lecture */}
           <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6 mb-6`}>
-            <h2 className={`text-xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-              {state.settings.language === 'fr' ? 'Raccourcis de lecture' : 'Reading shortcuts'}
-            </h2>
-            <QuickSlotsHelp />
+            {/* (Titre interne supprimé ici pour éviter le doublon — QuickSlotsHelp peut afficher le sien) */}
+            <div
+              className={`${isDark ? 'text-white' : 'text-gray-800'} w-full text-base leading-relaxed 
+              [&>*]:w-full [&_*]:max-w-none`}
+            >
+              <QuickSlotsHelp />
+            </div>
           </div>
 
           {/* 4) Mises à jour */}
@@ -300,4 +303,5 @@ export default function Settings() {
     </div>
   );
 }
+
 
