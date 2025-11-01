@@ -168,7 +168,17 @@ export default function Reading() {
 
   const oldTestamentBooks = books.filter(book => book.testament === 'old');
   const newTestamentBooks = books.filter(book => book.testament === 'new');
-  const getBookName = (book: BibleBook) => (state.settings.language === 'fr' ? book.nameFr : book.nameEn);
+  const getBookName = (book: BibleBook | null) =>
+    state.settings.language === 'fr'
+      ? (book?.nameFr ?? '')
+      : (book?.nameEn ?? '');
+
+  // Nom du livre raccourci à 12 caractères (affichage bouton mobile)
+  const shortBookName = (book: BibleBook | null) => {
+    const full = getBookName(book);
+    const max = 12;
+    return full.length > max ? full.slice(0, max) + '…' : full;
+  };
 
   const resolveBook = (bookIdentifier: string): BibleBook | null => {
     let found = books.find(b => b.name === bookIdentifier);
@@ -208,6 +218,7 @@ export default function Reading() {
         refreshSlots();
       } catch {}
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBook?.name, selectedChapter, activeSlot]);
 
   useEffect(() => {
@@ -443,14 +454,11 @@ export default function Reading() {
 
     const t = setTimeout(doScroll, 50);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, highlightedVerse, scrollTargetVerse, state.settings.language]);
 
-  useEffect(() => {
-    if (highlightedVerse !== null) {
-      const timer = setTimeout(() => setHighlightedVerse(null), 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [highlightedVerse]);
+  // (Suppression de l'auto-effacement du surlignage)
+  // Le verset reste en surbrillance jusqu’à une nouvelle recherche/chapitre/slot.
 
   const toggleSelectVerse = (num: number) => {
     setSelectedVerses(prev => (prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]));
@@ -591,6 +599,7 @@ export default function Reading() {
       window.removeEventListener('scroll', onScroll);
       if (scrollDebounce.current) window.clearTimeout(scrollDebounce.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, selectedBook?.name, selectedChapter, activeSlot, cmdH, lastTappedSlot, selectedVerses.length]);
 
   const pickNewRandom = async () => {
@@ -638,37 +647,38 @@ export default function Reading() {
               style={{ top: `${NAV_H}px` }}
             >
               <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-none sm:rounded-md md:rounded-lg shadow md:shadow-lg px-4 py-2 md:p-3 mb-2`}>
-                {/* MOBILE: colonne ; DESKTOP: ligne */}
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2 w-full">
-                  {/* Bloc gauche : livre/chapitre + titre */}
+                  {/* Bloc gauche : livre/chapitre */}
                   <div className="flex flex-col w-full md:w-auto">
                     <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'} text-sm md:text-base flex flex-col md:flex-row md:items-center gap-2 w-full`}>
-                      {/* Ligne haute mobile: Livre + Chapitre pleine largeur */}
+                      {/* Ligne haute mobile: Livre + Chapitre */}
                       <div className="flex w-full items-center gap-2">
+                        {/* Livre (mobile) — largeur visuelle fixe: 12ch */}
                         <button
                           type="button"
                           onClick={() => setShowBookPicker(true)}
                           aria-expanded={showBookPicker}
                           className={`inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 md:hidden ${
                             isDark
-                              ? `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
-                              : `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              ? `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              : `${activeTheme ? activeTheme.mobileBtn : 'bg-blue-600 text-white'} ${activeTheme ? activeTheme.mobileBtnHover : 'hover:bg-blue-500'} focus:ring-blue-400`
                           }`}
-                          title={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
+                          title={getBookName(selectedBook)}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un livre' : 'Choose a book'}
                         >
-                          <span className="truncate">{getBookName(selectedBook)}</span>
+                          <span className="truncate w-[12ch]">{shortBookName(selectedBook)}</span>
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
+                        {/* Chapitre (mobile) */}
                         <button
                           type="button"
                           onClick={() => setShowChapterPicker(true)}
                           aria-expanded={showChapterPicker}
                           className={`inline-flex items-center justify-between gap-1 rounded-md px-2 py-1 text-xs font-semibold shadow active:scale-95 focus:outline-none focus:ring-2 flex-1 md:hidden ${
                             isDark
-                              ? `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
-                              : `${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtn) : 'bg-blue-600 text-white'} ${activeSlot ? (SLOT_THEMES[activeSlot as SlotKey].mobileBtnHover) : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              ? `${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtn ?? 'bg-blue-600 text-white') : 'bg-blue-600 text-white'} ${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtnHover ?? '') : 'hover:bg-blue-500'} focus:ring-blue-400`
+                              : `${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtn ?? 'bg-blue-600 text-white') : 'bg-blue-600 text-white'} ${activeTheme ? (SLOT_THEMES[activeSlot as SlotKey]?.mobileBtnHover ?? '') : 'hover:bg-blue-500'} focus:ring-blue-400`
                           }`}
                           title={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
                           aria-label={state.settings.language === 'fr' ? 'Choisir un chapitre' : 'Choose a chapter'}
@@ -677,6 +687,7 @@ export default function Reading() {
                           <ChevronDown className="w-3 h-3 opacity-90" />
                         </button>
 
+                        {/* Loupe + slots 1/2/3 (mobile) */}
                         <div className="flex items-center gap-2 md:hidden">
                           {[0, 1, 2, 3].map((i) => {
                             const s = quickSlots[i];
@@ -824,7 +835,8 @@ export default function Reading() {
 
           {/* Contenu du chapitre */}
           {selectedBook ? (
-            <div className={`${isDark ? 'bg-gray-800' : (activeTheme ? activeTheme.lightPaper : 'bg-white')} sm:rounded-xl sm:shadow-lg sm:p-6 p-2 -mx-4 sm:mx-0 min-h-96`}>
+            // Fond fixe (ne change plus avec 1/2/3)
+            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-2 -mx-4 sm:mx-0 min-h-96`}>
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'}`} />
@@ -910,7 +922,7 @@ export default function Reading() {
                           : isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
-                      {getBookName(book)}
+                      {state.settings.language === 'fr' ? book.nameFr : book.nameEn}
                     </button>
                   ))}
                 </div>
@@ -927,7 +939,7 @@ export default function Reading() {
                           : isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
-                      {getBookName(book)}
+                      {state.settings.language === 'fr' ? book.nameFr : book.nameEn}
                     </button>
                   ))}
                 </div>
@@ -991,7 +1003,8 @@ export default function Reading() {
             </div>
           )}
 
-          {showBottomRandom && (
+          {/* CTA aléatoire en bas — désactivé (laisser ce bloc commenté pour réactiver plus tard) */}
+          {false && showBottomRandom && (
             <div className="fixed bottom-4 right-4 z-40 sm:right-6 sm:bottom-6">
               <button onClick={pickNewRandom} className="px-3 py-2 rounded-full shadow-lg bg-indigo-600 text-white text-sm active:scale-95">
                 {state.settings.language === 'fr' ? 'Nouveau aléatoire' : 'New random'}
@@ -1024,3 +1037,4 @@ export default function Reading() {
     </div>
   );
 }
+
