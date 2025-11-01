@@ -218,7 +218,7 @@ export default function Settings() {
               {/* Mode Malvoyant (XL) */}
               <div className="mt-4">
                 <button
-                  onClick={() => updateSettings({ fontSize: 36 })}
+                  onClick={() => updateSettings({ fontSize: 42 })}
                   className={`w-full px-4 py-4 rounded-lg border-2 font-semibold tracking-wide transition-all duration-200 ${
                     isDark
                       ? 'border-gray-500 bg-gray-700 text-white hover:border-gray-400'
