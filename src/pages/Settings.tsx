@@ -1,5 +1,7 @@
+// src/pages/Settings.tsx
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import QuickSlotsHelp from '../components/QuickSlotsHelp';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sun, Moon, Type, Globe, Palette } from 'lucide-react';
@@ -8,14 +10,22 @@ export default function Settings() {
   const { state, updateSettings } = useApp();
   const { t } = useTranslation();
 
-  const isDark = state.settings.theme === 'dark';
+  // Forcer le mode sombre au montage (sécurité globale)
+  useEffect(() => {
+    if (state.settings.theme !== 'dark') {
+      updateSettings({ theme: 'dark' });
+    }
+  }, [state.settings.theme, updateSettings]);
 
-  // 4 réglages : 18, 20, 22, 24 px
+  // UI forcée en sombre (on garde la logique pour réactiver plus tard si besoin)
+  const isDark = true;
+
+  // Tailles en partant du plus grand + bouton "malvoyant (XL)"
   const fontSizes = [
-    { label: '18px', value: 18 },
-    { label: '20px', value: 20 },
-    { label: '22px', value: 22 },
+    { label: '26px', value: 26 },
     { label: '24px', value: 24 },
+    { label: '22px', value: 22 },
+    { label: '20px', value: 20 },
   ];
 
   return (
@@ -37,7 +47,27 @@ export default function Settings() {
                 {t('appearance')}
               </h2>
 
-              {/* Theme Toggle */}
+              {/* Note : Mode sombre forcé */}
+              <div
+                className={`mb-8 p-4 rounded-lg border ${
+                  isDark ? 'border-gray-700 bg-gray-700/60' : 'border-gray-200 bg-gray-50'
+                }`}
+              >
+                <p className={`${isDark ? 'text-white' : 'text-gray-800'} font-medium`}>
+                  {state.settings.language === 'fr'
+                    ? 'Mode sombre activé en permanence.'
+                    : 'Dark mode is permanently enabled.'}
+                </p>
+                <p className={`${isDark ? 'text-white/70' : 'text-gray-600'} text-sm mt-1`}>
+                  {state.settings.language === 'fr'
+                    ? "L’option de changement de thème est cachée pour l’instant (code conservé)."
+                    : 'Theme toggle is hidden for now (code kept).'}
+                </p>
+              </div>
+
+              {/* ====== [CONSERVÉ POUR RÉACTIVATION FUTURE] Sélecteur de thème ====== 
+                  Pour réactiver : supprime ce bloc de commentaires */}
+              {/*
               <div className="mb-8">
                 <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                   {state.settings.language === 'fr' ? "Mode d'affichage" : 'Display mode'}
@@ -71,13 +101,18 @@ export default function Settings() {
                   </button>
                 </div>
               </div>
+              */}
+              {/* ====== FIN sélecteur de thème conservé ====== */}
 
               {/* Font Size */}
               <div>
-                <label className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'} flex items-center`}>
+                <label
+                  className={`block text-sm font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-700'} flex items-center`}
+                >
                   <Type size={16} className="mr-2" />
                   {t('fontSize')}
                 </label>
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {fontSizes.map(({ label, value }) => (
                     <button
@@ -94,6 +129,25 @@ export default function Settings() {
                       {label}
                     </button>
                   ))}
+                </div>
+
+                {/* Bouton “Malvoyant (XL)” */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => updateSettings({ fontSize: 36 })}
+                    className={`w-full px-4 py-4 rounded-lg border-2 font-semibold tracking-wide transition-all duration-200 ${
+                      isDark
+                        ? 'border-gray-500 bg-gray-700 text-white hover:border-gray-400'
+                        : 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    {state.settings.language === 'fr' ? 'Mode malvoyant (XL)' : 'Low-vision mode (XL)'}
+                  </button>
+                  <p className={`${isDark ? 'text-white/70' : 'text-gray-600'} text-xs mt-2`}>
+                    {state.settings.language === 'fr'
+                      ? 'Règle la taille de police à ~36px pour un confort maximal.'
+                      : 'Sets font size to ~36px for maximum comfort.'}
+                  </p>
                 </div>
 
                 {/* Font Size Preview */}
@@ -135,9 +189,7 @@ export default function Settings() {
                       <div className={`${isDark ? 'text-white/80' : 'text-gray-600'} text-sm`}>Louis Segond 1910</div>
                     </div>
                   </div>
-                  {state.settings.language === 'fr' && (
-                    <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                  )}
+                  {state.settings.language === 'fr' && <div className="w-3 h-3 bg-blue-500 rounded-full" />}
                 </button>
 
                 <button
@@ -157,9 +209,7 @@ export default function Settings() {
                       <div className={`${isDark ? 'text-white/80' : 'text-gray-600'} text-sm`}>King James Version</div>
                     </div>
                   </div>
-                  {state.settings.language === 'en' && (
-                    <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                  )}
+                  {state.settings.language === 'en' && <div className="w-3 h-3 bg-blue-500 rounded-full" />}
                 </button>
               </div>
 
@@ -167,14 +217,14 @@ export default function Settings() {
               <div className={`mt-6 p-4 ${isDark ? 'bg-gray-700' : 'bg-blue-50'} rounded-lg`}>
                 <p className={`text-sm ${isDark ? 'text-white/90' : 'text-blue-700'}`}>
                   {state.settings.language === 'fr'
-                    ? "La langue est détectée automatiquement selon votre navigateur, mais vous pouvez la changer manuellement."
+                    ? 'La langue est détectée automatiquement selon votre navigateur, mais vous pouvez la changer manuellement.'
                     : 'Language is automatically detected based on your browser, but you can change it manually.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Aide raccourcis (mise à jour) */}
+          {/* Aide raccourcis */}
           <div className="mt-6">
             <QuickSlotsHelp />
           </div>
