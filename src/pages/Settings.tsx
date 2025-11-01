@@ -22,6 +22,7 @@ export default function Settings() {
 
   // Tailles (du plus petit au plus grand)
   const fontSizes = [21, 23, 25, 27];
+  const XL_FONT = 42;
 
   // --- Gestion mise à jour (SW) ---
   const [updateStatus, setUpdateStatus] = useState<
@@ -215,18 +216,26 @@ export default function Settings() {
                 })}
               </div>
 
-              {/* Mode Malvoyant (XL) */}
+              {/* Mode Malvoyant (XL = 42px) */}
               <div className="mt-4">
-                <button
-                  onClick={() => updateSettings({ fontSize: 42 })}
-                  className={`w-full px-4 py-4 rounded-lg border-2 font-semibold tracking-wide transition-all duration-200 ${
-                    isDark
-                      ? 'border-gray-500 bg-gray-700 text-white hover:border-gray-400'
-                      : 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400'
-                  }`}
-                >
-                  {state.settings.language === 'fr' ? 'Mode Malvoyant (XL)' : 'Low-vision mode (XL)'}
-                </button>
+                {(() => {
+                  const isXL = state.settings.fontSize === XL_FONT;
+                  return (
+                    <button
+                      onClick={() => updateSettings({ fontSize: XL_FONT })}
+                      aria-pressed={isXL}
+                      className={`w-full px-4 py-4 rounded-lg border-2 font-semibold tracking-wide transition-all duration-200 ${
+                        isXL
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : isDark
+                          ? 'border-gray-500 bg-gray-700 text-white hover:border-gray-400'
+                          : 'border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      {state.settings.language === 'fr' ? 'Mode Malvoyant (XL)' : 'Low-vision mode (XL)'}
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* Aperçu */}
@@ -337,5 +346,4 @@ export default function Settings() {
     </div>
   );
 }
-
 
