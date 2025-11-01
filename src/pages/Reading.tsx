@@ -73,7 +73,7 @@ export default function Reading() {
   useEffect(() => {
     const prevBg = document.body.style.backgroundColor;
     const prevOverflowX = document.body.style.overflowX;
-    document.body.style.backgroundColor = isDark ? '#111827' /* tailwind bg-gray-900 */ : '#F9FAFB' /* bg-gray-50 */;
+    document.body.style.backgroundColor = isDark ? '#111827' : '#F9FAFB';
     document.body.style.overflowX = 'hidden';
     return () => {
       document.body.style.backgroundColor = prevBg;
@@ -294,7 +294,7 @@ export default function Reading() {
     setSelectedBook(book);
     setSelectedChapter(slot.chapter);
     setSelectedVerses([]);
-    setHighlightedVerse(null);
+       setHighlightedVerse(null);
     setScrollTargetVerse(slot.verse ?? null);
     try { window.scrollTo({ top: 0 }); } catch {}
     fetchChapter(book, slot.chapter);
@@ -678,13 +678,18 @@ export default function Reading() {
   // ====== Rendu
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
-      <div className="container mx-auto px-4 pb-6 overflow-x-hidden">
+      <div className="container mx-auto px-4 pb-6">
         <div className="max-w-6xl mx-auto">
-          {/* Bandeau sticky — aligné sur la colonne */}
+          {/* Bandeau sticky — PLEIN ÉCRAN (mêmes bords que le header) */}
           {selectedBook && (
-            <div ref={commandBarRef} className="sticky z-30 bg-transparent" style={{ top: `${NAV_H}px` }}>
-              <div className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur rounded-md md:rounded-lg shadow md:shadow-lg px-4 py-2 md:p-3 mb-2`}>
-                {/* MOBILE: colonne ; DESKTOP: ligne */}
+            <div
+              ref={commandBarRef}
+              className="sticky z-40 -mx-4 sm:mx-0"
+              style={{ top: `${NAV_H}px` }}
+            >
+              <div
+                className={`${isDark ? 'bg-gray-800/95' : 'bg-white/95'} backdrop-blur border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} rounded-none sm:rounded-md shadow md:shadow-lg px-4 py-2 md:p-3`}
+              >
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2 w-full">
                   {/* Bloc gauche : livre/chapitre */}
                   <div className="flex flex-col w-full md:w-auto">
@@ -873,9 +878,9 @@ export default function Reading() {
 
           {/* Contenu du chapitre (zone de swipe uniquement ici) */}
           {selectedBook ? (
-            // Fond fixe (ne change plus avec 1/2/3)
+            // Fond fixe — PLEIN ÉCRAN sous le header (mêmes bords que le bandeau)
             <div
-              className={`${isDark ? 'bg-gray-800' : 'bg-white'} sm:rounded-xl sm:shadow-lg sm:p-6 p-2 mx-0 min-h-96`}
+              className={`${isDark ? 'bg-gray-800' : 'bg-white'} -mx-4 sm:mx-0 sm:rounded-xl sm:shadow-lg px-4 py-2 sm:p-6 min-h-96`}
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
@@ -888,7 +893,7 @@ export default function Reading() {
                 </div>
               ) : chapter ? (
                 <div>
-                  {/* Liste des versets — espacement serré */}
+                  {/* Liste des versets */}
                   <div className="space-y-0">
                     {chapter.verses.map((v) => {
                       const isHighlighted = highlightedVerse === v.verse;
