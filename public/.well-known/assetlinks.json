@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "fr.theword.www.twa",
       "sha256_cert_fingerprints": [
-        "39:59:9B:72:B1:F8:BA:CD:2C:C9:B8:14:08:F2:BA:5B:F6:E9:E5:09:8C:76:E6:50:5D:4C:AD:DE:6C:82:EA:6C"
+        "39:59:9B:72:B1:F8:BA:CD:2C:C9:B8:14:08:F2:BA:5B:F6:E9:E5:09:8C:76:E6:50:5D:4C:AD:DE:6C:82:EA:6C",
+        "90:56:F8:5C:83:75:E0:92:16:4D:14:7D:7E:18:67:00:B9:08:71:26:7F:28:AE:32:53:6A:D1:FF:95:96:4F:51"
       ]
     }
   }
