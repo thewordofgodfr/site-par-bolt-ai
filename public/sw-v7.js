@@ -5,7 +5,7 @@
 // ✅ Timeout réseau pour éviter les fetch "pending" quand le réseau tombe
 // ✅ Runtime cache data en CORE/EXTRA selon langue
 
-const CACHE_VERSION = 'v450'; // ← bump obligatoire à chaque déploiement
+const CACHE_VERSION = 'v451'; // ← bump obligatoire à chaque déploiement
 const CACHE_APP = `twog-app-${CACHE_VERSION}`;
 const CACHE_DATA_CORE = `twog-data-core-${CACHE_VERSION}`;
 const CACHE_DATA_EXTRA = `twog-data-extra-${CACHE_VERSION}`;
